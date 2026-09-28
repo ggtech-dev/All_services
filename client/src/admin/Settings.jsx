@@ -8,6 +8,10 @@ const FIELDS = [
   { key: 'announcement', label: 'Announcement strip', placeholder: 'Leave empty to hide', hint: 'Shown in a coloured strip above the banner. Leave empty to hide it.' },
   { key: 'service_city', label: 'Service city', placeholder: 'Hyderabad' },
   { key: 'support_phone', label: 'Customer support phone', placeholder: '+91 98765 43210' },
+  { key: 'delivery_fee', label: 'Delivery fee (₹)', number: true, hint: 'Charged on product orders.' },
+  { key: 'free_delivery_orders', label: 'Free delivery for first N orders', number: true, hint: 'New customers get this many orders with free delivery.' },
+  { key: 'agent_pay_per_order', label: 'Agent pay per delivery (₹)', number: true, hint: 'Added to the agent wallet when they deliver.' },
+  { key: 'agent_max_active_orders', label: 'Orders an agent can carry at once', number: true, hint: '1 = agent must deliver before taking the next order.' },
 ];
 
 export default function Settings() {
@@ -44,14 +48,14 @@ export default function Settings() {
   return (
     <div className="two-col settings-layout">
       <form className="panel form" onSubmit={submit}>
-        <h3>Customer home page</h3>
+        <h3>Customer home page & delivery</h3>
         {FIELDS.map((f) => (
           <label key={f.key}>
             {f.label}
             {f.textarea ? (
               <textarea rows={3} value={form[f.key] || ''} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />
             ) : (
-              <input value={form[f.key] || ''} placeholder={f.placeholder} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />
+              <input type={f.number ? 'number' : 'text'} min={f.number ? 0 : undefined} value={form[f.key] || ''} placeholder={f.placeholder} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />
             )}
             {f.hint && <small className="muted">{f.hint}</small>}
           </label>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, formatEta } from '../api.js';
 import SmartImage from '../components/SmartImage.jsx';
+import { useCart } from '../cart.jsx';
 
 const rupees = (v) => `₹${Number(v).toLocaleString('en-IN')}`;
 
@@ -11,6 +12,7 @@ export default function ServiceShop() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const cart = useCart();
 
   useEffect(() => {
     setData(null);
@@ -60,14 +62,17 @@ export default function ServiceShop() {
                     <b className="product-price">{rupees(p.price)}</b>
                     {off > 0 && <s className="product-mrp">{rupees(p.mrp)}</s>}
                   </div>
-                  <button
-                    className="btn btn-sm add-btn"
-                    style={{ '--accent': service.category_color }}
-                    disabled={!p.in_stock}
-                    onClick={() => alert('Cart & checkout come in the next step!')}
-                  >
-                    {p.in_stock ? 'ADD' : 'Sold out'}
-                  </button>
+                  {cart.qtyOf(p.id) > 0 ? (
+                    <div className="stepper">
+                      <button onClick={() => cart.setQty(p.id, cart.qtyOf(p.id) - 1)} aria-label="Less">−</button>
+                      <span>{cart.qtyOf(p.id)}</span>
+                      <button onClick={() => cart.add(p, service)} aria-label="More">+</button>
+                    </div>
+                  ) : (
+                    <button className="btn btn-sm add-btn" disabled={!p.in_stock} onClick={() => cart.add(p, service)}>
+                      {p.in_stock ? 'ADD' : 'Sold out'}
+                    </button>
+                  )}
                 </div>
               </div>
             </article>
@@ -75,6 +80,13 @@ export default function ServiceShop() {
         })}
         {!products.length && <p className="muted">No items match “{search}”.</p>}
       </div>
+
+      {cart.count > 0 && (
+        <Link to="/checkout" className="cart-bar" style={{ '--accent': service.category_color }}>
+          <span>🛒 {cart.count} item{cart.count > 1 ? 's' : ''} · <b>₹{cart.subtotal.toLocaleString('en-IN')}</b></span>
+          <span>View cart →</span>
+        </Link>
+      )}
     </>
   );
 }

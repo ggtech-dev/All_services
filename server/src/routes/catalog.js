@@ -3,6 +3,15 @@ import { query } from '../db.js';
 
 const router = Router();
 
+router.get('/localities', async (req, res, next) => {
+  try {
+    const { rows } = await query('SELECT id, name, pincode, lat::float AS lat, lng::float AS lng FROM localities WHERE is_active ORDER BY name');
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/settings', async (req, res, next) => {
   try {
     const { rows } = await query('SELECT key, value FROM site_settings');

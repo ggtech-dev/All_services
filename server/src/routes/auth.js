@@ -44,6 +44,18 @@ router.post('/login', async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid username or password' });
     if (portal === 'admin' && user.role !== 'admin')
       return res.status(403).json({ error: 'This account does not have admin access. Please use the User login.' });
+    if (portal === 'agent') {
+      if (user.role !== 'agent') return res.status(403).json({ error: 'This is not a delivery agent account.' });
+      const { rows: a } = await query('SELECT status, rejection_reason FROM agents WHERE user_id = $1', [user.id]);
+      const messages = {
+        pending: 'Your application is under review. You can log in once the admin approves it.',
+        rejected: `Your application was not approved: ${a[0]?.rejection_reason || 'please contact support'}.`,
+        suspended: 'Your agent account is suspended. Please contact the admin.',
+      };
+      if (messages[a[0]?.status]) return res.status(403).json({ error: messages[a[0].status] });
+    }
+    if (portal !== 'agent' && user.role === 'agent')
+      return res.status(403).json({ error: 'Delivery agents please use the Agent login.' });
 
     res.json({ token: signToken(user), user: publicUser(user) });
   } catch (err) {

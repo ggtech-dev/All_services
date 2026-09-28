@@ -5,6 +5,9 @@ import { pool } from './db.js';
 import authRoutes from './routes/auth.js';
 import catalogRoutes from './routes/catalog.js';
 import adminRoutes, { UPLOAD_DIR } from './routes/admin.js';
+import adminOpsRoutes from './routes/adminOps.js';
+import orderRoutes from './routes/orders.js';
+import agentRoutes, { applyRouter } from './routes/agent.js';
 
 if (!process.env.JWT_SECRET) {
   console.error('JWT_SECRET is missing. Copy .env.example to .env and fill it in.');
@@ -27,16 +30,21 @@ app.get('/api/health', async (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin', adminOpsRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/agents', applyRouter);
+app.use('/api/agent', agentRoutes);
 app.use('/api', catalogRoutes);
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 
 // PostgreSQL errors raised by our functions/procedures carry user-facing messages.
-const PG_STATUS = { '22023': 400, '22P02': 400, P0002: 404, '23505': 409, '23503': 409 };
+const PG_STATUS = { '22023': 400, '22P02': 400, P0002: 404, '55000': 409, '23505': 409, '23503': 409 };
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'Image must be 5 MB or smaller' });
+  if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'Each file must be 5 MB or smaller' });
+  if (err.code === 'LIMIT_UNEXPECTED_FILE') return res.status(400).json({ error: 'Unexpected file field' });
   if (err.status) return res.status(err.status).json({ error: err.message });
   if (PG_STATUS[err.code]) {
     const messages = {

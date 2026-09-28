@@ -1,0 +1,212 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import { api } from '../api.js';
+import { useToast } from '../admin/ui.jsx';
+import { rupees, statusLabel, time, usePoll } from '../orderStatus.jsx';
+
+const nearest = (list, lat, lng) =>
+  list.reduce((best, l) => {
+    const d = (l.lat - lat) ** 2 + (l.lng - lng) ** 2;
+    return !best || d < best.d ? { ...l, d } : best;
+  }, null);
+
+export default function AgentHome() {
+  const { me, reload } = useOutletContext();
+  const toast = useToast();
+  const [localities, setLocalities] = useState([]);
+  const [active, setActive] = useState([]);
+  const [available, setAvailable] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const seen = useRef(null);
+  const online = me.agent.is_online;
+
+  const load = useCallback(async () => {
+    const act = await api('/agent/orders?scope=active');
+    setActive(await Promise.all(act.map((o) => api(`/agent/orders/${o.id}`))));
+    if (online) {
+      const list = await api('/agent/available');
+      // Tell the agent when new orders appear while they are looking at the screen.
+      if (seen.current) {
+        const fresh = list.filter((o) => !seen.current.has(o.id));
+        if (fresh.length) toast(`🔔 ${fresh.length} new order${fresh.length > 1 ? 's' : ''} near you`);
+      }
+      seen.current = new Set(list.map((o) => o.id));
+      setAvailable(list);
+    } else {
+      setAvailable([]);
+      seen.current = null;
+    }
+  }, [online, toast]);
+
+  useEffect(() => {
+    api('/localities').then(setLocalities).catch(() => {});
+  }, []);
+  useEffect(() => {
+    load().catch((e) => toast(e.message, 'error'));
+  }, [load, toast]);
+  usePoll(() => load().catch(() => {}), 8000, online || active.length > 0);
+
+  const run = async (fn, okMessage) => {
+    setBusy(true);
+    try {
+      await fn();
+      if (okMessage) toast(okMessage);
+      await Promise.all([reload(), load()]);
+    } catch (e) {
+      toast(e.message, 'error');
+      await load().catch(() => {});
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const setOnline = (value, localityId) =>
+    run(() => api('/agent/status', { method: 'PATCH', body: { online: value, locality_id: localityId ?? me.agent.locality_id } }),
+      value ? "You're online. New orders near you will appear here." : "You're offline.");
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) return toast('Location is not available on this device', 'error');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const l = nearest(localities, pos.coords.latitude, pos.coords.longitude);
+        if (l) setOnline(true, l.id);
+      },
+      () => toast('Please allow location access, or choose your area', 'error'),
+      { timeout: 10000 }
+    );
+  };
+
+  const s = me.stats;
+  return (
+    <div className="agent-stack">
+      <section className={`online-card ${online ? 'is-online' : ''}`}>
+        <div>
+          <b>{online ? "You're online" : "You're offline"}</b>
+          <small>{online ? `Receiving orders around ${me.agent.locality_name || 'your area'}` : 'Go online to start receiving orders'}</small>
+        </div>
+        <button className={`online-toggle ${online ? 'on' : ''}`} disabled={busy} onClick={() => setOnline(!online)} aria-pressed={online}>
+          <span />
+        </button>
+      </section>
+
+      <div className="area-row">
+        <label>
+          📍 My area
+          <select value={me.agent.locality_id || ''} onChange={(e) => setOnline(online, Number(e.target.value))} disabled={busy}>
+            <option value="" disabled>Choose area…</option>
+            {localities.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+        </label>
+        <button className="btn btn-ghost btn-sm" onClick={useMyLocation} disabled={busy}>🎯 Use my location</button>
+      </div>
+
+      <div className="agent-stats">
+        <div><small>Today</small><b>{s.today_deliveries}</b><small>deliveries</small></div>
+        <div><small>Today</small><b>{rupees(s.today_earnings)}</b><small>earned</small></div>
+        <div><small>Wallet</small><b>{rupees(s.wallet_balance)}</b><small>balance</small></div>
+        <div className={Number(s.cash_in_hand) > 0 ? 'warn' : ''}><small>Cash</small><b>{rupees(s.cash_in_hand)}</b><small>to deposit</small></div>
+      </div>
+
+      {active.map((o) => <ActiveOrder key={o.id} order={o} busy={busy} run={run} />)}
+
+      {online && (
+        <section>
+          <h3 className="agent-h3">Orders near you <span className="muted">({available.length})</span></h3>
+          {!available.length && <div className="agent-empty">🕐 No open orders right now. New orders show up here automatically.</div>}
+          {available.map((o) => (
+            <article key={o.id} className="avail-card">
+              <div className="avail-top">
+                <span className="distance">{o.distance_km != null ? `${o.distance_km} km` : '—'}</span>
+                <div className="avail-where">
+                  <b>{o.locality_name}{o.pincode && ` · ${o.pincode}`}</b>
+                  <small className="muted">#{o.id} · {o.kind === 'service' ? 'Service visit' : `${o.item_count} item${o.item_count > 1 ? 's' : ''}`} · {time(o.created_at)}</small>
+                </div>
+                <span className="earn">+{rupees(s.pay_per_order)}</span>
+              </div>
+              <p className="avail-summary">{o.summary}</p>
+              <div className="avail-foot">
+                <small className="muted">{o.slot || 'ASAP'} · Collect {rupees(o.total)}</small>
+                <button
+                  className="btn btn-primary btn-sm"
+                  disabled={busy || s.active_orders > 0}
+                  title={s.active_orders > 0 ? 'Finish your current order first' : ''}
+                  onClick={() => run(() => api(`/agent/orders/${o.id}/accept`, { method: 'POST' }), `Order #${o.id} is yours. Head to the pickup!`)}
+                >
+                  Accept
+                </button>
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
+    </div>
+  );
+}
+
+function ActiveOrder({ order, busy, run }) {
+  const [otp, setOtp] = useState('');
+  const isService = order.kind === 'service';
+  const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    `${order.address_line}, ${order.landmark || ''}, ${order.locality_name}, Hyderabad ${order.pincode || ''}`
+  )}`;
+
+  return (
+    <section className="active-card">
+      <div className="active-head">
+        <span className="active-tag">{statusLabel(order.status, order.kind)}</span>
+        <b>#{order.id}</b>
+      </div>
+
+      <div className="active-customer">
+        <div>
+          <b>{order.contact_name}</b>
+          <p>{order.address_line}{order.landmark && `, ${order.landmark}`}<br />{order.locality_name}{order.pincode && ` – ${order.pincode}`}</p>
+        </div>
+        <div className="active-actions">
+          <a className="btn btn-ghost btn-sm" href={`tel:${order.contact_phone}`}>📞 Call</a>
+          <a className="btn btn-ghost btn-sm" href={mapUrl} target="_blank" rel="noreferrer">🗺️ Map</a>
+        </div>
+      </div>
+
+      <ul className="active-items">
+        {order.items.map((i) => (
+          <li key={i.id}><span>{i.icon || '•'} {i.name} <small className="muted">{i.unit}</small></span><b>× {i.qty}</b></li>
+        ))}
+      </ul>
+      {order.notes && <p className="active-note">📝 {order.notes}</p>}
+      {order.slot && <p className="muted small">🕒 {order.slot}</p>}
+      <div className="collect">💵 Collect <b>{rupees(order.total)}</b> cash</div>
+
+      {order.status === 'assigned' && (
+        <div className="active-buttons">
+          <button className="btn btn-primary btn-block" disabled={busy}
+            onClick={() => run(() => api(`/agent/orders/${order.id}/status`, { method: 'POST', body: { status: 'picked_up' } }), isService ? 'On your way!' : 'Picked up. Deliver safely!')}>
+            {isService ? '🚀 Start — I\'m on the way' : '📦 Picked up — start delivery'}
+          </button>
+          <button className="link-btn danger-text" disabled={busy}
+            onClick={() => {
+              const reason = prompt("Can't do this order? Tell us why (it goes back to other agents):");
+              if (reason !== null) run(() => api(`/agent/orders/${order.id}/release`, { method: 'POST', body: { reason } }), 'Order released');
+            }}>
+            Can't do this order
+          </button>
+        </div>
+      )}
+
+      {order.status === 'picked_up' && (
+        <form className="otp-form" onSubmit={(e) => {
+          e.preventDefault();
+          run(() => api(`/agent/orders/${order.id}/status`, { method: 'POST', body: { status: 'delivered', otp } }), '🎉 Delivered! You are free for the next order.');
+        }}>
+          <label>
+            Ask the customer for their 4-digit OTP
+            <input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" placeholder="• • • •" required pattern="\d{4}" autoComplete="one-time-code" />
+          </label>
+          <button className="btn btn-primary btn-block btn-success" disabled={busy || otp.length !== 4}>
+            ✅ Mark {isService ? 'completed' : 'delivered'}
+          </button>
+        </form>
+      )}
+    </section>
+  );
+}

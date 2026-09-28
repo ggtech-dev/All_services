@@ -54,9 +54,9 @@ export default function Category() {
                   Shop {s.product_count} items →
                 </Link>
               ) : (
-                <button className="btn btn-primary btn-sm" style={{ '--accent': category.color }} onClick={() => alert('Booking comes in the next step!')}>
+                <Link to={`/checkout?service=${s.slug}`} className="btn btn-primary btn-sm btn-center" style={{ '--accent': category.color }}>
                   Book now
-                </button>
+                </Link>
               )}
             </div>
           </article>

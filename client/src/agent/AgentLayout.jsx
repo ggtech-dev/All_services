@@ -1,0 +1,47 @@
+import { useCallback, useEffect, useState } from 'react';
+import { NavLink, Outlet } from 'react-router-dom';
+import { api } from '../api.js';
+import { ToastProvider } from '../admin/ui.jsx';
+import { StateBadge, usePoll } from '../orderStatus.jsx';
+import './agent.css';
+
+// Mobile-first shell for delivery agents: header with online state, bottom tab bar.
+export default function AgentLayout() {
+  const [me, setMe] = useState(null);
+  const [error, setError] = useState('');
+
+  const reload = useCallback(() => api('/agent/me').then(setMe).catch((e) => setError(e.message)), []);
+  useEffect(() => {
+    reload();
+  }, [reload]);
+  usePoll(reload, 20000);
+
+  if (error) return <div className="center-screen"><div className="alert">{error}</div></div>;
+  if (!me) return <div className="center-screen"><div className="spinner" /></div>;
+
+  return (
+    <ToastProvider>
+      <div className="agent-app">
+        <header className="agent-top">
+          <div className="agent-who">
+            <div className="agent-avatar small">{me.agent.full_name[0]}</div>
+            <div>
+              <b>{me.agent.full_name}</b>
+              <StateBadge state={me.agent.state} />
+            </div>
+          </div>
+          <span className="agent-brand">🛵 All Services</span>
+        </header>
+        <main className="agent-main">
+          <Outlet context={{ me, reload }} />
+        </main>
+        <nav className="agent-tabs">
+          <NavLink to="/agent" end><span>🏠</span>Home</NavLink>
+          <NavLink to="/agent/orders"><span>📦</span>My orders</NavLink>
+          <NavLink to="/agent/wallet"><span>💰</span>Wallet</NavLink>
+          <NavLink to="/agent/profile"><span>👤</span>Profile</NavLink>
+        </nav>
+      </div>
+    </ToastProvider>
+  );
+}

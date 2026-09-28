@@ -5,26 +5,29 @@ import AuthLayout from './AuthLayout.jsx';
 
 const PORTALS = {
   user: { label: 'User', icon: '👤', title: 'Welcome back 👋', subtitle: 'Log in to book your next service', button: 'Login' },
+  agent: { label: 'Agent', icon: '🛵', title: 'Delivery agent login', subtitle: 'Go online, pick orders near you and track your earnings', button: 'Login to agent app' },
   admin: { label: 'Admin', icon: '🛡️', title: 'Admin login', subtitle: 'Manage services, prices and the customer app', button: 'Login to admin panel' },
 };
+const HOME = { user: '/', agent: '/agent', admin: '/admin' };
+const homeFor = (role) => (role === 'admin' ? '/admin' : role === 'agent' ? '/agent' : '/');
 
 export default function Login() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [params, setParams] = useSearchParams();
-  const portal = params.get('as') === 'admin' ? 'admin' : 'user';
+  const portal = PORTALS[params.get('as')] ? params.get('as') : 'user';
   const [form, setForm] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  if (user) return <Navigate to={user.role === 'admin' ? '/admin' : '/'} replace />;
+  if (user) return <Navigate to={homeFor(user.role)} replace />;
 
   const p = PORTALS[portal];
   const choose = (next) => {
     setError('');
-    setParams(next === 'admin' ? { as: 'admin' } : {}, { replace: true });
+    setParams(next === 'user' ? {} : { as: next }, { replace: true });
   };
 
   const onSubmit = async (e) => {
@@ -33,7 +36,7 @@ export default function Login() {
     setBusy(true);
     try {
       await login(form.username.trim(), form.password, portal);
-      navigate(portal === 'admin' ? '/admin' : location.state?.from || '/', { replace: true });
+      navigate(portal === 'user' ? location.state?.from || '/' : HOME[portal], { replace: true });
     } catch (err) {
       setError(err.message);
       setBusy(false);
@@ -64,7 +67,7 @@ export default function Login() {
             autoComplete="username"
             value={form.username}
             onChange={(e) => setForm({ ...form, username: e.target.value })}
-            placeholder={portal === 'admin' ? 'Admin username' : 'Enter your username'}
+            placeholder={portal === 'user' ? 'Enter your username' : `${PORTALS[portal].label} username`}
             required
           />
         </label>
@@ -85,15 +88,13 @@ export default function Login() {
           </div>
         </label>
         {error && <div className="alert">{error}</div>}
-        <button className={`btn btn-primary ${portal === 'admin' ? 'btn-dark' : ''}`} disabled={busy}>
+        <button className={`btn btn-primary ${portal === 'admin' ? 'btn-dark' : portal === 'agent' ? 'btn-agent' : ''}`} disabled={busy}>
           {busy ? 'Logging in…' : p.button}
         </button>
       </form>
-      {portal === 'user' ? (
-        <p className="switch">New here? <Link to="/register">Create an account</Link></p>
-      ) : (
-        <p className="switch">Admin accounts are created by the system owner.</p>
-      )}
+      {portal === 'user' && <p className="switch">New here? <Link to="/register">Create an account</Link></p>}
+      {portal === 'agent' && <p className="switch">Want to deliver with us? <Link to="/agent/apply">Apply as a delivery agent</Link></p>}
+      {portal === 'admin' && <p className="switch">Admin accounts are created by the system owner.</p>}
     </AuthLayout>
   );
 }

@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
+import { api } from '../api.js';
+import { usePoll } from '../orderStatus.jsx';
 import { ToastProvider } from './ui.jsx';
 
 const NAV = [
   { to: '/admin', label: 'Dashboard', icon: '📊', end: true },
+  { to: '/admin/orders', label: 'Manage orders', icon: '📦', badge: 'waiting' },
+  { to: '/admin/agents', label: 'Manage agents', icon: '🛵', badge: 'pending_applications' },
   { to: '/admin/services', label: 'Services', icon: '🧰' },
   { to: '/admin/products', label: 'Products', icon: '🛍️' },
   { to: '/admin/categories', label: 'Categories', icon: '🗂️' },
@@ -17,6 +21,14 @@ export default function AdminLayout() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  // Sidebar badges: orders waiting for an agent, agent applications to review.
+  const [counts, setCounts] = useState({});
+  const loadCounts = () => api('/admin/orders-stats').then(setCounts).catch(() => {});
+  useEffect(() => {
+    loadCounts();
+  }, []);
+  usePoll(loadCounts, 20000);
+
   const current = NAV.find((n) => (n.end ? pathname === n.to : pathname.startsWith(n.to)));
 
   return (
@@ -31,6 +43,7 @@ export default function AdminLayout() {
             {NAV.map((n) => (
               <NavLink key={n.to} to={n.to} end={n.end} className="admin-nav-link">
                 <span className="admin-nav-icon">{n.icon}</span> {n.label}
+                {n.badge && counts[n.badge] > 0 && <span className="nav-badge">{counts[n.badge]}</span>}
               </NavLink>
             ))}
           </nav>

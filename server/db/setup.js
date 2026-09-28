@@ -7,7 +7,7 @@
 import { readFile } from 'node:fs/promises';
 import bcrypt from 'bcryptjs';
 import { pool, SCHEMA } from '../src/db.js';
-import { categories, products } from './catalog.js';
+import { categories, localities, products } from './catalog.js';
 
 const refreshImages = process.argv.includes('--refresh-images');
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -22,6 +22,10 @@ const defaultSettings = {
   announcement: '🎉 Free delivery on your first 3 orders across Hyderabad!',
   support_phone: '+91 98765 43210',
   service_city: 'Hyderabad, Telangana',
+  delivery_fee: '30',
+  free_delivery_orders: '3',
+  agent_pay_per_order: '25',
+  agent_max_active_orders: '1',
 };
 // Settings still holding an older default are moved to the new one; admin-edited values are kept.
 const oldDefaults = { service_city: 'Hyderabad', announcement: '🎉 Free delivery on your first 3 orders!' };
@@ -32,6 +36,7 @@ try {
   await client.query(`SET search_path TO ${SCHEMA}`);
   await client.query(await sql('./schema.sql'));
   await client.query(await sql('./functions.sql'));
+  await client.query(await sql('./orders.sql'));
 
   await client.query('BEGIN');
   let refreshed = 0;
@@ -79,6 +84,16 @@ try {
       );
       productCount += r.rowCount;
     }
+  }
+
+  // Order numbers start at #1001.
+  await client.query(`SELECT setval('orders_id_seq', 1000) WHERE NOT EXISTS (SELECT 1 FROM orders)`);
+
+  for (const [name, pincode, lat, lng] of localities) {
+    await client.query(
+      'INSERT INTO localities (name, pincode, lat, lng) VALUES ($1,$2,$3,$4) ON CONFLICT (name) DO NOTHING',
+      [name, pincode, lat, lng]
+    );
   }
 
   for (const [key, value] of Object.entries(defaultSettings)) {

@@ -23,6 +23,14 @@ export async function api(path, { method = 'GET', body } = {}) {
   return data;
 }
 
+// Fetches a protected file (e.g. an agent's Aadhaar scan) and returns { url, type } for <img>/<a>.
+export async function apiFile(path) {
+  const res = await fetch(`/api${path}`, { headers: { Authorization: `Bearer ${getToken()}` } });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not load file');
+  const blob = await res.blob();
+  return { url: URL.createObjectURL(blob), type: blob.type };
+}
+
 export async function uploadImage(file) {
   const form = new FormData();
   form.append('image', file);

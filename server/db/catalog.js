@@ -222,3 +222,29 @@ export const products = {
     ['Premium Family Pack (+ dry fruits, ghee)', '', '1 month', 4999, 5600, '🧺'],
   ],
 };
+
+// Hyderabad areas: [name, pincode, lat, lng]. Used for addresses and to find the nearest agent/order.
+export const localities = [
+  ['Ameerpet', '500016', 17.4375, 78.4483],
+  ['Attapur', '500048', 17.3700, 78.4300],
+  ['Banjara Hills', '500034', 17.4126, 78.4392],
+  ['Begumpet', '500016', 17.4447, 78.4664],
+  ['Charminar', '500002', 17.3616, 78.4747],
+  ['Dilsukhnagar', '500060', 17.3688, 78.5247],
+  ['Gachibowli', '500032', 17.4401, 78.3489],
+  ['Himayatnagar', '500029', 17.4015, 78.4867],
+  ['Hitech City', '500081', 17.4435, 78.3772],
+  ['Jubilee Hills', '500033', 17.4326, 78.4071],
+  ['Kompally', '500014', 17.5360, 78.4850],
+  ['Kondapur', '500084', 17.4700, 78.3570],
+  ['Kukatpally', '500072', 17.4849, 78.4138],
+  ['LB Nagar', '500074', 17.3457, 78.5522],
+  ['Madhapur', '500081', 17.4483, 78.3915],
+  ['Manikonda', '500089', 17.4050, 78.3860],
+  ['Mehdipatnam', '500028', 17.3950, 78.4353],
+  ['Miyapur', '500049', 17.4968, 78.3614],
+  ['Secunderabad', '500003', 17.4399, 78.4983],
+  ['Shamshabad', '501218', 17.2403, 78.4294],
+  ['Tarnaka', '500017', 17.4281, 78.5379],
+  ['Uppal', '500039', 17.4018, 78.5602],
+];

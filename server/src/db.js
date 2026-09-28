@@ -21,7 +21,7 @@ export async function asActor(userId, fn) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query(`SELECT set_config('app.user_id', $1, true)`, [String(userId)]);
+    await client.query(`SELECT set_config('app.user_id', $1, true)`, [userId == null ? '' : String(userId)]);
     const result = await fn(client);
     await client.query('COMMIT');
     return result;

@@ -477,7 +477,7 @@ LANGUAGE sql STABLE SET search_path FROM CURRENT AS $$
     'services',          (SELECT count(*) FROM services),
     'active_services',   (SELECT count(*) FROM services WHERE is_active),
     'customers',         (SELECT count(*) FROM users WHERE role = 'customer'),
-    'partners',          (SELECT count(*) FROM users WHERE role = 'partner'),
+    'partners',          (SELECT count(*) FROM agents WHERE status = 'active'),
     'admins',            (SELECT count(*) FROM users WHERE role = 'admin'),
     'products',          (SELECT count(*) FROM products),
     'active_products',   (SELECT count(*) FROM products WHERE is_active),

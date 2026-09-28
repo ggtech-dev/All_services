@@ -39,11 +39,21 @@ All_Services/
    npm run dev               # http://localhost:5173  (proxies /api and /uploads to the server)
    ```
 
+## Who uses what
+
+| Who | URL | What they do |
+|---|---|---|
+| Customer | http://localhost:5173/login (👤 User) | Shop products, book services, checkout (cash on delivery), track orders live with a delivery OTP |
+| Delivery agent | http://localhost:5173/login?as=agent (🛵 Agent) | Go online, see open orders nearest first, accept, mark picked up, deliver with the customer's OTP, see today's deliveries, wallet and reports |
+| New agent | http://localhost:5173/agent/apply | Public application: details, vehicle, Aadhaar / PAN / driving licence upload. Can log in only after an admin approves |
+| Admin | http://localhost:5173/login?as=admin (🛡️ Admin) | Everything below |
+
 ## Logging in
 
-The login page has a **User / Admin** switch.
+The login page has a **User / Agent / Admin** switch.
 
 - **User**: customers log in or register and browse services.
+- **Agent**: approved delivery agents; they land on `/agent`. Pending, rejected or suspended agents get a clear message instead.
 - **Admin**: only accounts with the `admin` role can log in here; they land on `/admin`.
 
 Default admin: `admin` / `Admin@123` (set `ADMIN_PASSWORD` before the first `db:setup` to change it). **Change it before going live.**
@@ -53,11 +63,13 @@ Default admin: `admin` / `Admin@123` (set `ADMIN_PASSWORD` before the first `db:
 | Page | What the admin can do |
 |---|---|
 | Dashboard | Counts, services per category, recent changes |
+| **Manage orders** | Every order with customer, items, total, status (waiting → assigned → on the way → delivered / cancelled) and agent. Filters, search, date. Order detail: timeline, OTP, assign / re-assign to a free agent (nearest first), cancel |
+| **Manage agents** | All agents with live state (🟢 free, 🔵 on delivery, ⚪ offline), today's and total deliveries, wallet, cash in hand. Applications tab: view uploaded documents, approve / reject. Add agent directly, copy the apply link, suspend / re-activate. Agent detail: 7-day report, recent orders, wallet (pay agent, cash received, bonus) |
 | Services | Add / edit / delete services, click a price to edit it, click a photo to upload a new one, show/hide (Live switch) |
 | Products | Items inside a service (e.g. Milk Delivery → Vijaya Toned Milk 500 ml): add / edit / delete, price & MRP edited in place, photo upload, in-stock and Live switches |
 | Categories | Add / edit / delete categories, icon, colour, image, show/hide |
 | Prices & items | One page with every product and service: edit any price or photo in the row, add new products/services, bulk % change (products, services or both) with full preview, price history |
-| Site settings | Home banner title/subtitle, announcement strip, city, support phone (live preview) |
+| Site settings | Home banner, announcement strip, city, support phone, delivery fee, free deliveries for new customers, agent pay per delivery, orders an agent can carry at once |
 | Activity log | Every admin change: who, what, old → new |
 
 Everything saves immediately and customers see it on their next page load.
@@ -76,6 +88,10 @@ All writes from the admin panel go through PostgreSQL functions/procedures in [`
 | `sp_set_service_active`, `sp_delete_service`, `sp_delete_category` | Show/hide and safe delete (a category with services can't be deleted) |
 | `sp_save_settings` | Upsert home page settings |
 | `fn_admin_stats` | Dashboard numbers in one call |
+| `fn_place_order`, `sp_cancel_order` | Validated order placement with DB prices, delivery fee, OTP; cancellation rules |
+| `fn_create_agent`, `sp_review_agent`, `sp_set_agent_status`, `sp_set_agent_online` | Agent applications (Aadhaar/PAN/DL validation), approval, suspend, online/offline |
+| `fn_agent_accept_order`, `fn_admin_assign_order`, `sp_agent_release_order`, `fn_agent_update_order` | Race-safe accept, assignment, pickup, OTP delivery with wallet credit |
+| `sp_wallet_entry`, `fn_agent_stats`, `fn_order_stats`, `v_agents` | Wallet (payout ≤ balance), agent reports, live free/busy/offline state |
 | triggers | price history for services and products, `admin_audit_log` on every category/service/product change, `updated_at`, and a check that a product's selling price is never above its MRP |
 
 The API tags each admin transaction with the admin's user id (`SET LOCAL app.user_id`), so the triggers record who made each change. Every function pins its `search_path` to the app schema, so the triggers also work when data is edited directly in psql or pgAdmin.
@@ -83,6 +99,16 @@ The API tags each admin transaction with the admin's user id (`SET LOCAL app.use
 Seed products are Telangana staples (Vijaya & Heritage dairy, Sona Masoori rice, Guntur chilli powder, gongura, Osmania biscuits, murrel…). Products start with an emoji tile; admins upload real photos from the admin panel.
 
 `npm run db:setup` is safe to re-run: it upgrades the schema and adds missing seed rows but never overwrites changes made in the admin panel.
+
+## How an order flows
+
+1. Customer places an order (prices are recalculated in the database, never trusted from the browser). A 4-digit **delivery OTP** is created.
+2. Online agents see it in *Orders near you*, sorted by distance from their area. Customer phone/address stay hidden until an agent accepts.
+3. The first agent to tap **Accept** gets it (safe even if two tap at the same moment). An agent carries one order at a time by default, so they show as *busy*.
+4. Agent taps **Picked up**, delivers, and enters the customer's OTP → **Delivered**. The agent earns the per-delivery pay in their wallet and the COD cash is recorded as *cash in hand*. The agent is *free* again.
+5. Customers can cancel until pickup; admins until delivery. Agents can release an order they can't do; it goes back to the open list.
+
+Identity documents are stored in `server/private_uploads` (never served publicly, only streamed to logged-in admins). Only the last 4 digits of Aadhaar are kept.
 
 ## Service images
 
@@ -117,7 +143,11 @@ To re-fetch seed photos: delete entries from `images.json`, run `npm run db:imag
 - [x] Categories and services with images
 - [x] Admin panel: services, categories, pricing, settings, activity log
 - [x] Products inside services, editable prices/MRP/photos/stock
-- [ ] Cart & checkout for products; booking flow for services (address, time slot, notes)
-- [ ] Admin: view bookings, assign partners
-- [ ] Partner app: accept and complete jobs
-- [ ] Booking status tracking
+- [x] Cart & checkout, service booking, live order tracking with delivery OTP
+- [x] Delivery agents: apply with documents, admin approval, agent app, wallet & reports
+- [x] Admin: manage orders, manage agents
+- [ ] Online payments (UPI / Razorpay)
+- [ ] SMS / push notifications for new orders
+- [ ] Live GPS tracking of the agent on a map
+- [ ] Customer ratings for agents
+
