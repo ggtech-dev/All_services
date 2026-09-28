@@ -15,6 +15,7 @@ export default function Navbar() {
             Hi, <b>{user.fullName || user.username}</b>
             {user.role !== 'customer' && <span className="role-badge">{user.role}</span>}
           </span>
+          {user.role === 'admin' && <Link to="/admin" className="btn btn-ghost">🛡️ Admin panel</Link>}
           <button className="btn btn-ghost" onClick={logout}>Logout</button>
         </div>
       </div>

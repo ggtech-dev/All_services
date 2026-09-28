@@ -4,6 +4,7 @@ import 'dotenv/config';
 import { pool } from './db.js';
 import authRoutes from './routes/auth.js';
 import catalogRoutes from './routes/catalog.js';
+import adminRoutes, { UPLOAD_DIR } from './routes/admin.js';
 
 if (!process.env.JWT_SECRET) {
   console.error('JWT_SECRET is missing. Copy .env.example to .env and fill it in.');
@@ -13,6 +14,7 @@ if (!process.env.JWT_SECRET) {
 const app = express();
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' }));
 app.use(express.json());
+app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' }));
 
 app.get('/api/health', async (req, res) => {
   try {
@@ -24,12 +26,26 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api', catalogRoutes);
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 
+// PostgreSQL errors raised by our functions/procedures carry user-facing messages.
+const PG_STATUS = { '22023': 400, '22P02': 400, P0002: 404, '23505': 409, '23503': 409 };
+
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
+  if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'Image must be 5 MB or smaller' });
+  if (err.status) return res.status(err.status).json({ error: err.message });
+  if (PG_STATUS[err.code]) {
+    const messages = {
+      '22P02': 'Invalid value',
+      '23505': 'That name is already in use',
+      '23503': 'This item is in use and cannot be deleted',
+    };
+    return res.status(PG_STATUS[err.code]).json({ error: messages[err.code] || err.message });
+  }
   console.error(err);
   res.status(500).json({ error: 'Something went wrong' });
 });

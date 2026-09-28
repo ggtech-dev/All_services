@@ -43,3 +43,38 @@ CREATE INDEX IF NOT EXISTS services_category_idx ON services(category_id);
 -- Attribution text for Creative Commons images.
 ALTER TABLE categories ADD COLUMN IF NOT EXISTS image_credit TEXT;
 ALTER TABLE services   ADD COLUMN IF NOT EXISTS image_credit TEXT;
+
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE services   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- Every price/unit change on a service (filled by a trigger).
+CREATE TABLE IF NOT EXISTS service_price_history (
+  id         SERIAL PRIMARY KEY,
+  service_id INT NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+  old_price  NUMERIC(10,2),
+  new_price  NUMERIC(10,2),
+  old_unit   VARCHAR(30),
+  new_unit   VARCHAR(30),
+  changed_by INT REFERENCES users(id) ON DELETE SET NULL,
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS price_history_service_idx ON service_price_history(service_id, changed_at DESC);
+
+-- Editable text shown on the customer pages (banner, announcement, support phone...).
+CREATE TABLE IF NOT EXISTS site_settings (
+  key        VARCHAR(60) PRIMARY KEY,
+  value      TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Who changed what in the admin panel (filled by triggers).
+CREATE TABLE IF NOT EXISTS admin_audit_log (
+  id         BIGSERIAL PRIMARY KEY,
+  actor_id   INT REFERENCES users(id) ON DELETE SET NULL,
+  entity     VARCHAR(30) NOT NULL,
+  entity_id  INT,
+  action     VARCHAR(20) NOT NULL,
+  details    JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS audit_created_idx ON admin_audit_log(created_at DESC);

@@ -5,19 +5,31 @@ import SmartImage from '../components/SmartImage.jsx';
 
 export default function Home() {
   const [categories, setCategories] = useState([]);
+  const [settings, setSettings] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api('/categories').then(setCategories).catch((e) => setError(e.message)).finally(() => setLoading(false));
+    Promise.all([api('/categories'), api('/settings')])
+      .then(([cats, s]) => {
+        setCategories(cats);
+        setSettings(s);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
     <>
+      {settings.announcement && <div className="announcement">{settings.announcement}</div>}
       <section className="banner">
         <div>
-          <h1>What do you need today?</h1>
-          <p>Pick a category to see its services. Trusted local partners, quick turnaround.</p>
+          <h1>{settings.banner_title || 'What do you need today?'}</h1>
+          <p>{settings.banner_subtitle || 'Pick a category to see its services.'}</p>
+        </div>
+        <div className="banner-meta">
+          {settings.service_city && <span>📍 {settings.service_city}</span>}
+          {settings.support_phone && <a href={`tel:${settings.support_phone.replace(/\s/g, '')}`}>📞 {settings.support_phone}</a>}
         </div>
       </section>
 

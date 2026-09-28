@@ -3,6 +3,15 @@ import { query } from '../db.js';
 
 const router = Router();
 
+router.get('/settings', async (req, res, next) => {
+  try {
+    const { rows } = await query('SELECT key, value FROM site_settings');
+    res.json(Object.fromEntries(rows.map((r) => [r.key, r.value])));
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/categories', async (req, res, next) => {
   try {
     const { rows } = await query(

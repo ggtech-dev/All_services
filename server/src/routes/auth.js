@@ -34,13 +34,16 @@ router.post('/register', async (req, res, next) => {
 
 router.post('/login', async (req, res, next) => {
   try {
-    const { username, password } = req.body || {};
+    // portal: 'user' (default) or 'admin' — the tab chosen on the login page.
+    const { username, password, portal = 'user' } = req.body || {};
     if (!username || !password) return res.status(400).json({ error: 'Username and password are required' });
 
     const { rows } = await query('SELECT * FROM users WHERE username = lower($1)', [username]);
     const user = rows[0];
     if (!user || !(await bcrypt.compare(password, user.password_hash)))
       return res.status(401).json({ error: 'Invalid username or password' });
+    if (portal === 'admin' && user.role !== 'admin')
+      return res.status(403).json({ error: 'This account does not have admin access. Please use the User login.' });
 
     res.json({ token: signToken(user), user: publicUser(user) });
   } catch (err) {

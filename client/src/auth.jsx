@@ -23,7 +23,11 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     loading,
-    login: (username, password) => api('/auth/login', { method: 'POST', body: { username, password } }).then(handleAuth),
+    login: (username, password, portal = 'user') =>
+      api('/auth/login', { method: 'POST', body: { username, password, portal } }).then((d) => {
+        handleAuth(d);
+        return d.user;
+      }),
     register: (form) => api('/auth/register', { method: 'POST', body: form }).then(handleAuth),
     logout: () => {
       setToken(null);

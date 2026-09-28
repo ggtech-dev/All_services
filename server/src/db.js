@@ -14,3 +14,21 @@ export const pool = new pg.Pool({
 });
 
 export const query = (text, params) => pool.query(text, params);
+
+// Runs fn(client) in a transaction tagged with the acting user, so DB triggers can
+// record who made each change (see fn_current_actor in db/functions.sql).
+export async function asActor(userId, fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`SELECT set_config('app.user_id', $1, true)`, [String(userId)]);
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}

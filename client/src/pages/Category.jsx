@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api } from '../api.js';
+import { api, formatEta, formatPrice } from '../api.js';
 import SmartImage from '../components/SmartImage.jsx';
-
-const formatEta = (m) => (m < 60 ? `${m} min` : m < 1440 ? `${Math.round(m / 60)} hr` : `${Math.round(m / 1440)} day`);
-const formatPrice = (p, unit) => (Number(p) > 0 ? `₹${Number(p).toLocaleString('en-IN')} ${unit}` : unit);
 
 export default function Category() {
   const { slug } = useParams();
