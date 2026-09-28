@@ -225,3 +225,18 @@ a.stat-tile:hover { transform: translateY(-2px); }
 .preview-scroll thead th { position: sticky; top: 0; }
 .toolbar select { max-width: 240px; }
 .cat-pill { display: inline-block; max-width: 210px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+
+/* inline quantity edit + photo remove */
+.text-btn { border: 1px solid transparent; background: none; font: inherit; font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 8px; white-space: nowrap; }
+.text-btn .pencil { opacity: 0; color: var(--primary); }
+.text-btn:hover { border-color: var(--border); background: #fff; }
+.text-btn:hover .pencil { opacity: 1; }
+.text-edit { width: 120px; padding: 6px 8px; font-size: 13px; }
+.thumb-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
+.thumb-remove {
+  position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; border: 0;
+  background: #ef4444; color: #fff; font-size: 10px; line-height: 18px; padding: 0; cursor: pointer;
+  opacity: 0; transition: opacity .15s; box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+}
+.thumb-wrap:hover .thumb-remove, .thumb-remove:focus-visible { opacity: 1; }
+@media (hover: none) { .thumb-remove { opacity: 1; } }

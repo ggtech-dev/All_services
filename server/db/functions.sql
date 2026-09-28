@@ -385,6 +385,28 @@ BEGIN
   END IF;
 END $$;
 
+-- Changes the pack size / quantity of a product ("500 ml", "20 L") or the price unit of a service ("per visit").
+CREATE OR REPLACE PROCEDURE sp_set_unit(p_entity TEXT, p_id INT, p_unit TEXT)
+LANGUAGE plpgsql SET search_path FROM CURRENT AS $$
+DECLARE
+  v_count INT;
+BEGIN
+  IF length(coalesce(p_unit, '')) > 30 THEN
+    RAISE EXCEPTION 'Keep the quantity under 30 characters' USING ERRCODE = '22023';
+  END IF;
+  IF p_entity = 'products' THEN
+    UPDATE products SET unit = nullif(trim(p_unit), '') WHERE id = p_id;
+  ELSIF p_entity = 'services' THEN
+    UPDATE services SET price_unit = nullif(trim(p_unit), '') WHERE id = p_id;
+  ELSE
+    RAISE EXCEPTION 'Unknown item type %', p_entity USING ERRCODE = '22023';
+  END IF;
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  IF v_count = 0 THEN
+    RAISE EXCEPTION 'Item not found' USING ERRCODE = 'P0002';
+  END IF;
+END $$;
+
 -- Raise/lower prices by a percentage, rounded to the nearest p_round_to rupees.
 --   p_category_id: one category, or NULL for everything
 --   p_target:      'services', 'products' or 'both'

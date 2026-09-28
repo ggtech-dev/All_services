@@ -178,7 +178,63 @@ export function PriceCell({ value, unit, onSave, allowEmpty = false, emptyLabel 
   );
 }
 
-// ---------- row photo: click the thumbnail to upload a new one ----------
+// ---------- editable short text (pack size / quantity / unit) ----------
+export function TextCell({ value, placeholder = 'add', onSave }) {
+  const toast = useToast();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    if (busy) return;
+    if (draft.trim() === (value || '')) return setEditing(false);
+    setBusy(true);
+    try {
+      await onSave(draft.trim());
+      setEditing(false);
+    } catch (e) {
+      toast(e.message, 'error');
+      setEditing(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        className="text-btn"
+        title="Click to change quantity"
+        onClick={() => {
+          setDraft(value || '');
+          setEditing(true);
+        }}
+      >
+        {value || <span className="muted">{placeholder}</span>} <span className="pencil">✎</span>
+      </button>
+    );
+  }
+  return (
+    <input
+      className="text-edit"
+      autoFocus
+      value={draft}
+      readOnly={busy}
+      maxLength={30}
+      placeholder="e.g. 20 L, 500 g"
+      onChange={(e) => setDraft(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') save();
+        if (e.key === 'Escape') setEditing(false);
+      }}
+      onBlur={save}
+    />
+  );
+}
+
+// ---------- row photo: click the thumbnail to upload a new one, ✕ to remove it ----------
+// The server deletes the previous uploaded file when a photo is replaced or removed.
 export function RowImage({ entity, id, url, icon, onChanged }) {
   const toast = useToast();
   const fileRef = useRef(null);
@@ -187,15 +243,11 @@ export function RowImage({ entity, id, url, icon, onChanged }) {
 
   useEffect(() => setBroken(false), [url]);
 
-  const onFile = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
+  const setImage = async (image_url, message) => {
     setBusy(true);
     try {
-      const image_url = await uploadImage(file);
       await api(`/admin/${entity}/${id}/image`, { method: 'PATCH', body: { image_url, image_credit: '' } });
-      toast('Photo updated');
+      toast(message);
       onChanged?.();
     } catch (err) {
       toast(err.message, 'error');
@@ -204,12 +256,35 @@ export function RowImage({ entity, id, url, icon, onChanged }) {
     }
   };
 
+  const onFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setBusy(true);
+    try {
+      await setImage(await uploadImage(file), url ? 'Photo replaced (old one deleted)' : 'Photo added');
+    } catch (err) {
+      toast(err.message, 'error');
+      setBusy(false);
+    }
+  };
+
+  const remove = (e) => {
+    e.stopPropagation();
+    if (confirm('Remove this photo? The emoji tile will be shown instead.')) setImage('', 'Photo removed');
+  };
+
   return (
-    <button type="button" className="thumb thumb-btn" onClick={() => fileRef.current.click()} title="Click to change photo" disabled={busy}>
-      {url && !broken ? <img src={url} alt="" loading="lazy" onError={() => setBroken(true)} /> : <span>{icon || '🖼️'}</span>}
-      <span className="thumb-overlay">{busy ? '…' : '📷'}</span>
+    <span className="thumb-wrap">
+      <button type="button" className="thumb thumb-btn" onClick={() => fileRef.current.click()} title={url ? 'Click to replace photo' : 'Click to add photo'} disabled={busy}>
+        {url && !broken ? <img src={url} alt="" loading="lazy" onError={() => setBroken(true)} /> : <span>{icon || '🖼️'}</span>}
+        <span className="thumb-overlay">{busy ? '…' : '📷'}</span>
+      </button>
+      {url && !busy && (
+        <button type="button" className="thumb-remove" onClick={remove} title="Remove photo" aria-label="Remove photo">✕</button>
+      )}
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={onFile} />
-    </button>
+    </span>
   );
 }
 

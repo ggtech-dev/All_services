@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
-import { ImagePicker, Modal, PriceCell, RowImage, Switch, useLoad, useToast } from './ui.jsx';
+import { ImagePicker, Modal, PriceCell, RowImage, Switch, TextCell, useLoad, useToast } from './ui.jsx';
 import { matchesFilter } from './Services.jsx';
 
 export const EMPTY_PRODUCT = {
@@ -92,6 +92,12 @@ export function ProductsTable({ rows, total, loading, reload, onEdit }) {
     reload();
   };
 
+  const setUnit = async (p, unit) => {
+    await api(`/admin/products/${p.id}/unit`, { method: 'PATCH', body: { unit } });
+    toast(`${p.name}: quantity set to ${unit || 'none'}`);
+    reload();
+  };
+
   const setFlag = async (p, flag, value) => {
     try {
       await api(`/admin/products/${p.id}/flag`, { method: 'PATCH', body: { flag, value } });
@@ -136,7 +142,10 @@ export function ProductsTable({ rows, total, loading, reload, onEdit }) {
                     <RowImage entity="products" id={p.id} url={p.image_url} icon={p.icon || p.category_icon} onChanged={reload} />
                     <div>
                       <b>{p.name}</b>
-                      <div className="muted small">{[p.brand, p.unit].filter(Boolean).join(' · ')}</div>
+                      <div className="muted small">
+                        {p.brand && `${p.brand} · `}
+                        <TextCell value={p.unit} placeholder="add quantity" onSave={(v) => setUnit(p, v)} />
+                      </div>
                     </div>
                   </div>
                 </td>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { api } from '../api.js';
-import { timeAgo, useLoad, useToast } from './ui.jsx';
+import { PriceCell, RowImage, TextCell, timeAgo, useLoad, useToast } from './ui.jsx';
 import { EMPTY_SERVICE, ServiceForm, ServicesTable, matchesFilter } from './Services.jsx';
 import { EMPTY_PRODUCT, ProductForm, ProductsTable } from './Products.jsx';
 
@@ -31,7 +31,14 @@ export default function Pricing() {
 
   return (
     <div className="stack">
-      <BulkPanel cats={cats.data} services={services.data} products={products.data} onDone={reloadAll} toast={toast} />
+      <BulkPanel
+        cats={cats.data}
+        services={services.data}
+        products={products.data}
+        onDone={reloadAll}
+        onEdit={(kind, item) => setEditing({ kind, item })}
+        toast={toast}
+      />
 
       <section className="stack">
         <div className="toolbar">
@@ -98,7 +105,7 @@ export default function Pricing() {
   );
 }
 
-function BulkPanel({ cats, services, products, onDone, toast }) {
+function BulkPanel({ cats, services, products, onDone, onEdit, toast }) {
   const [form, setForm] = useState({ target: 'products', categoryId: '', percent: 10, roundTo: 1 });
   const [busy, setBusy] = useState(false);
   const percent = Number(form.percent);
@@ -109,12 +116,36 @@ function BulkPanel({ cats, services, products, onDone, toast }) {
     const inCat = (catId) => !form.categoryId || catId === Number(form.categoryId);
     const svc = form.target === 'products' ? [] : (services || [])
       .filter((s) => Number(s.base_price) > 0 && inCat(s.category_id))
-      .map((s) => ({ key: `s${s.id}`, icon: s.category_icon, name: s.name, unit: s.price_unit, now: Number(s.base_price), mrp: null }));
+      .map((s) => ({ key: `s${s.id}`, kind: 'service', item: s, icon: s.category_icon, name: s.name, unit: s.price_unit, now: Number(s.base_price), mrp: null }));
     const prd = form.target === 'services' ? [] : (products || [])
       .filter((p) => Number(p.price) > 0 && inCat(p.category_id))
-      .map((p) => ({ key: `p${p.id}`, icon: p.icon || p.category_icon, name: p.name, unit: p.unit, now: Number(p.price), mrp: p.mrp }));
+      .map((p) => ({ key: `p${p.id}`, kind: 'product', item: p, icon: p.icon || p.category_icon, name: p.name, unit: p.unit, now: Number(p.price), mrp: p.mrp }));
     return [...prd, ...svc];
   }, [services, products, form.target, form.categoryId]);
+
+  // Inline edits from the preview rows.
+  const entity = (a) => (a.kind === 'product' ? 'products' : 'services');
+  const savePrice = async (a, value) => {
+    if (a.kind === 'product') await api(`/admin/products/${a.item.id}/price`, { method: 'PATCH', body: { field: 'price', value } });
+    else await api(`/admin/services/${a.item.id}/price`, { method: 'PATCH', body: { base_price: value } });
+    toast(`${a.name}: ₹${a.now} → ₹${Number(value)}`);
+    onDone();
+  };
+  const saveUnit = async (a, unit) => {
+    await api(`/admin/${entity(a)}/${a.item.id}/unit`, { method: 'PATCH', body: { unit } });
+    toast(`${a.name}: quantity set to ${unit || 'none'}`);
+    onDone();
+  };
+  const remove = async (a) => {
+    if (!confirm(`Delete "${a.name}" permanently?`)) return;
+    try {
+      await api(`/admin/${entity(a)}/${a.item.id}`, { method: 'DELETE' });
+      toast(`Deleted ${a.name}`);
+      onDone();
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  };
 
   const scope = form.categoryId ? cats?.find((c) => c.id === Number(form.categoryId))?.name : 'all categories';
 
@@ -172,18 +203,28 @@ function BulkPanel({ cats, services, products, onDone, toast }) {
           <div className="preview-title">Preview · {affected.length} items</div>
           <div className="table-scroll preview-scroll">
             <table className="table compact">
-              <thead><tr><th>Item</th><th>Now</th><th>After</th></tr></thead>
+              <thead><tr><th>Item <small className="th-hint">· click photo, quantity or price to edit</small></th><th>Quantity</th><th>Now</th><th>After</th><th aria-label="Actions" /></tr></thead>
               <tbody>
                 {affected.map((a) => {
                   const after = newPrice(a.now, percent, roundTo, a.mrp);
                   return (
                     <tr key={a.key}>
-                      <td>{a.icon} {a.name} <small className="muted">{a.unit}</small></td>
-                      <td>₹{a.now.toLocaleString('en-IN')}</td>
+                      <td>
+                        <div className="cell-service">
+                          <RowImage entity={entity(a)} id={a.item.id} url={a.item.image_url} icon={a.icon} onChanged={onDone} />
+                          <b>{a.name}</b>
+                        </div>
+                      </td>
+                      <td><TextCell value={a.unit} placeholder="add quantity" onSave={(v) => saveUnit(a, v)} /></td>
+                      <td><PriceCell value={a.now} onSave={(v) => savePrice(a, v)} /></td>
                       <td className={after > a.now ? 'up' : after < a.now ? 'down' : ''}>
                         ₹{after.toLocaleString('en-IN')}
                         {a.mrp && after === Number(a.mrp) && after !== a.now && <small className="muted"> (MRP cap)</small>}
                         {after === a.now && <small className="muted"> (no change)</small>}
+                      </td>
+                      <td className="nowrap actions">
+                        <button className="btn btn-ghost btn-sm" onClick={() => onEdit(a.kind, a.item)}>Edit</button>
+                        <button className="icon-btn danger" onClick={() => remove(a)} title="Delete">🗑️</button>
                       </td>
                     </tr>
                   );

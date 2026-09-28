@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'node:path';
+import { unlink } from 'node:fs/promises';
 import crypto from 'node:crypto';
 import { query, asActor } from '../db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
@@ -11,7 +12,7 @@ const router = Router();
 router.use(requireAuth, requireRole('admin'));
 
 // Wraps async handlers so thrown errors reach the error middleware.
-const h = (fn) => (req, res, next) => fn(req, res).catch(next);
+const h = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -28,6 +29,36 @@ const upload = multer({
 
 const num = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
 const bool = (v) => (v === undefined || v === null ? null : Boolean(v));
+
+// ---------- uploaded photo cleanup ----------
+// When a photo is replaced or removed (or its row deleted), the old file in /uploads is deleted,
+// unless another category/service/product still uses it. Pasted external URLs are never touched.
+async function imageUrlsOf(entity, id) {
+  const products = entity === 'services' ? ' UNION ALL SELECT image_url FROM products WHERE service_id = $1' : '';
+  const { rows } = await query(`SELECT image_url FROM ${entity} WHERE id = $1${products}`, [id]);
+  return rows.map((r) => r.image_url).filter((u) => u?.startsWith('/uploads/'));
+}
+
+async function removeUnusedUploads(urls) {
+  for (const url of new Set(urls)) {
+    const { rows } = await query(
+      `SELECT 1 FROM categories WHERE image_url = $1 UNION ALL
+       SELECT 1 FROM services   WHERE image_url = $1 UNION ALL
+       SELECT 1 FROM products   WHERE image_url = $1 LIMIT 1`,
+      [url]
+    );
+    if (!rows.length) await unlink(path.join(UPLOAD_DIR, path.basename(url))).catch(() => {});
+  }
+}
+
+// Middleware: remember the row's current photos, clean them up once the request succeeded.
+const cleansOldImages = (entity) => h(async (req, res, next) => {
+  const old = await imageUrlsOf(entity, req.params.id);
+  res.on('finish', () => {
+    if (res.statusCode < 400 && old.length) removeUnusedUploads(old).catch((e) => console.error('upload cleanup:', e));
+  });
+  next();
+});
 
 // ---------- dashboard ----------
 router.get('/stats', h(async (req, res) => {
@@ -72,9 +103,9 @@ const saveCategory = (id) => h(async (req, res) => {
   res.status(id === null ? 201 : 200).json(row);
 });
 router.post('/categories', saveCategory(null));
-router.put('/categories/:id', saveCategory());
+router.put('/categories/:id', cleansOldImages('categories'), saveCategory());
 
-router.delete('/categories/:id', h(async (req, res) => {
+router.delete('/categories/:id', cleansOldImages('categories'), h(async (req, res) => {
   await asActor(req.user.id, (db) => db.query('CALL sp_delete_category($1)', [req.params.id]));
   res.status(204).end();
 }));
@@ -104,7 +135,7 @@ const saveService = (id) => h(async (req, res) => {
   res.status(id === null ? 201 : 200).json(row);
 });
 router.post('/services', saveService(null));
-router.put('/services/:id', saveService());
+router.put('/services/:id', cleansOldImages('services'), saveService());
 
 router.patch('/services/:id/price', h(async (req, res) => {
   const row = await asActor(req.user.id, async (db) =>
@@ -118,7 +149,7 @@ router.patch('/services/:id/active', h(async (req, res) => {
   res.status(204).end();
 }));
 
-router.delete('/services/:id', h(async (req, res) => {
+router.delete('/services/:id', cleansOldImages('services'), h(async (req, res) => {
   await asActor(req.user.id, (db) => db.query('CALL sp_delete_service($1)', [req.params.id]));
   res.status(204).end();
 }));
@@ -150,7 +181,7 @@ const saveProduct = (id) => h(async (req, res) => {
   res.status(id === null ? 201 : 200).json(row);
 });
 router.post('/products', saveProduct(null));
-router.put('/products/:id', saveProduct());
+router.put('/products/:id', cleansOldImages('products'), saveProduct());
 
 // body: { field: 'price' | 'mrp', value }
 router.patch('/products/:id/price', h(async (req, res) => {
@@ -168,17 +199,25 @@ router.patch('/products/:id/flag', h(async (req, res) => {
   res.status(204).end();
 }));
 
-router.delete('/products/:id', h(async (req, res) => {
+router.delete('/products/:id', cleansOldImages('products'), h(async (req, res) => {
   await asActor(req.user.id, (db) => db.query('CALL sp_delete_product($1)', [req.params.id]));
   res.status(204).end();
 }));
 
 // ---------- one-click image change for any row ----------
 for (const entity of ['categories', 'services', 'products']) {
-  router.patch(`/${entity}/:id/image`, h(async (req, res) => {
+  router.patch(`/${entity}/:id/image`, cleansOldImages(entity), h(async (req, res) => {
     await asActor(req.user.id, (db) =>
       db.query('CALL sp_set_image($1,$2,$3,$4)', [entity, req.params.id, req.body?.image_url, req.body?.image_credit])
     );
+    res.status(204).end();
+  }));
+}
+
+// Pack size / quantity of a product, or price unit of a service. body: { unit }
+for (const entity of ['services', 'products']) {
+  router.patch(`/${entity}/:id/unit`, h(async (req, res) => {
+    await asActor(req.user.id, (db) => db.query('CALL sp_set_unit($1,$2,$3)', [entity, req.params.id, req.body?.unit ?? '']));
     res.status(204).end();
   }));
 }
