@@ -35,11 +35,35 @@ router.get('/categories/:slug', async (req, res, next) => {
     if (!cat.rows[0]) return res.status(404).json({ error: 'Category not found' });
 
     const services = await query(
-      `SELECT id, slug, name, description, image_url, image_credit, base_price, price_unit, eta_minutes, requires_license
-         FROM services WHERE category_id = $1 AND is_active ORDER BY sort_order`,
+      `SELECT s.id, s.slug, s.name, s.description, s.image_url, s.image_credit, s.base_price, s.price_unit,
+              s.eta_minutes, s.requires_license,
+              (SELECT count(*) FROM products p WHERE p.service_id = s.id AND p.is_active)::int AS product_count
+         FROM services s WHERE s.category_id = $1 AND s.is_active ORDER BY s.sort_order`,
       [cat.rows[0].id]
     );
     res.json({ category: cat.rows[0], services: services.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// A service with the products customers can order in it.
+router.get('/services/:slug', async (req, res, next) => {
+  try {
+    const svc = await query(
+      `SELECT s.*, c.slug AS category_slug, c.name AS category_name, c.icon AS category_icon, c.color AS category_color
+         FROM services s JOIN categories c ON c.id = s.category_id
+        WHERE s.slug = $1 AND s.is_active AND c.is_active`,
+      [req.params.slug]
+    );
+    if (!svc.rows[0]) return res.status(404).json({ error: 'Service not found' });
+
+    const products = await query(
+      `SELECT id, slug, name, brand, description, icon, image_url, image_credit, unit, price, mrp, in_stock
+         FROM products WHERE service_id = $1 AND is_active ORDER BY in_stock DESC, sort_order, id`,
+      [svc.rows[0].id]
+    );
+    res.json({ service: svc.rows[0], products: products.rows });
   } catch (err) {
     next(err);
   }

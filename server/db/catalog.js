@@ -133,3 +133,92 @@ export const categories = [
     ],
   },
 ];
+
+// Seed products inside services, keyed by "<category slug>/<service name>".
+// Each product: [name, brand, unit, price (₹), MRP (₹) or null, emoji shown until a photo is uploaded]
+export const products = {
+  'home-services/Drinking Water Delivery (20L cans, bottles)': [
+    ['Water Can Refill', '', '20 L', 40, null, '💧'],
+    ['Bisleri Water Can', 'Bisleri', '20 L', 110, 120, '💧'],
+    ['Packaged Drinking Water (case of 12)', 'Kinley', '1 L x 12', 220, 240, '🧴'],
+  ],
+  'food-daily/Kirana Delivery': [
+    ['Sona Masoori Rice', '', '25 kg', 1450, 1600, '🍚'],
+    ['Toor Dal', '', '1 kg', 165, 180, '🫘'],
+    ['Chana Dal', '', '1 kg', 110, 120, '🫘'],
+    ['Sunflower Oil', 'Freedom', '1 L', 155, 170, '🛢️'],
+    ['Groundnut Oil', '', '1 L', 210, 230, '🥜'],
+    ['Whole Wheat Atta', 'Aashirvaad', '5 kg', 285, 310, '🌾'],
+    ['Sugar', '', '1 kg', 48, 52, '🍬'],
+    ['Iodised Salt', 'Tata', '1 kg', 28, 30, '🧂'],
+    ['Guntur Red Chilli Powder', '', '500 g', 160, 180, '🌶️'],
+    ['Turmeric Powder', '', '200 g', 55, 60, '🟡'],
+    ['Tamarind (Chintapandu)', '', '500 g', 90, 100, '🟤'],
+    ['Tea Powder', 'Red Label', '500 g', 280, 300, '🍵'],
+  ],
+  'food-daily/Vegetable Delivery': [
+    ['Tomato (Tamata)', '', '1 kg', 30, null, '🍅'],
+    ['Onion (Ullipaya)', '', '1 kg', 40, null, '🧅'],
+    ['Potato (Bangaladumpa)', '', '1 kg', 35, null, '🥔'],
+    ['Brinjal (Vankaya)', '', '500 g', 25, null, '🍆'],
+    ["Lady's Finger (Bendakaya)", '', '500 g', 30, null, '🫛'],
+    ['Green Chillies (Pachi Mirchi)', '', '250 g', 20, null, '🌶️'],
+    ['Gongura Leaves', '', '1 bunch', 20, null, '🌿'],
+    ['Palak (Palakura)', '', '1 bunch', 15, null, '🥬'],
+    ['Coriander & Curry Leaves', '', '1 bunch each', 15, null, '🌿'],
+    ['Ridge Gourd (Beerakaya)', '', '500 g', 30, null, '🥒'],
+  ],
+  'food-daily/Fruit Delivery': [
+    ['Banana (Robusta)', '', '1 dozen', 60, null, '🍌'],
+    ['Banganapalli Mango', '', '1 kg', 120, null, '🥭'],
+    ['Shimla Apple', '', '1 kg', 180, null, '🍎'],
+    ['Sweet Lime (Mosambi)', '', '1 kg', 80, null, '🍊'],
+    ['Guava (Jama)', '', '1 kg', 70, null, '🍐'],
+    ['Pomegranate', '', '1 kg', 200, null, '🔴'],
+    ['Papaya', '', '1 pc (~1 kg)', 50, null, '🟠'],
+  ],
+  'food-daily/Milk Delivery': [
+    ['Vijaya Toned Milk', 'Vijaya', '500 ml', 28, 28, '🥛'],
+    ['Heritage Full Cream Milk', 'Heritage', '500 ml', 36, 36, '🥛'],
+    ['Jersey Curd', 'Jersey', '500 g', 35, 38, '🥣'],
+    ['Vijaya Ghee', 'Vijaya', '500 ml', 330, 350, '🧈'],
+    ['Fresh Paneer', '', '200 g', 90, 100, '🧀'],
+    ['Buttermilk (Majjiga)', 'Heritage', '200 ml', 12, 12, '🥛'],
+  ],
+  'food-daily/Egg Delivery': [
+    ['Farm Eggs', '', '6 pcs', 42, null, '🥚'],
+    ['Farm Eggs Tray', '', '30 pcs', 195, 210, '🥚'],
+    ['Country Eggs (Natu Kodi)', '', '6 pcs', 72, null, '🥚'],
+  ],
+  'food-daily/Bread / Bakery Delivery': [
+    ['Milk Bread', '', '400 g', 45, 45, '🍞'],
+    ['Brown Bread', '', '400 g', 55, 55, '🍞'],
+    ['Osmania Biscuits', 'Karachi Bakery', '250 g', 80, 90, '🍪'],
+    ['Fruit Cake', '', '250 g', 110, 120, '🍰'],
+    ['Rusk', '', '300 g', 60, 65, '🥖'],
+  ],
+  'food-daily/Meat / Chicken Delivery': [
+    ['Chicken Curry Cut (Skinless)', '', '1 kg', 260, null, '🍗'],
+    ['Boneless Chicken', '', '500 g', 190, null, '🍗'],
+    ['Mutton Curry Cut', '', '1 kg', 900, null, '🥩'],
+    ['Chicken Liver', '', '250 g', 60, null, '🍖'],
+  ],
+  'food-daily/Fish Delivery': [
+    ['Rohu (Bocha)', '', '1 kg', 220, null, '🐟'],
+    ['Murrel (Korameenu)', '', '1 kg', 550, null, '🐟'],
+    ['Tiger Prawns (Royyalu)', '', '500 g', 380, null, '🦐'],
+    ['Seer Fish (Vanjaram)', '', '500 g', 450, null, '🐟'],
+  ],
+  'food-daily/Fresh Coconut Delivery': [
+    ['Tender Coconut', '', '1 pc', 45, null, '🥥'],
+    ['Cooking Coconut', '', '1 pc', 35, null, '🥥'],
+  ],
+  'food-daily/Pet Food Delivery': [
+    ['Adult Dog Food', 'Pedigree', '3 kg', 780, 850, '🐕'],
+    ['Cat Food', 'Whiskas', '1.2 kg', 450, 480, '🐈'],
+  ],
+  'food-daily/Monthly Grocery Subscription': [
+    ['Basic Family Pack (rice, dal, oil, atta, spices)', '', '1 month', 2999, 3400, '🧺'],
+    ['Premium Family Pack (+ dry fruits, ghee)', '', '1 month', 4999, 5600, '🧺'],
+  ],
+};

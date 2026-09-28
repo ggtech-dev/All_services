@@ -7,7 +7,7 @@
 import { readFile } from 'node:fs/promises';
 import bcrypt from 'bcryptjs';
 import { pool, SCHEMA } from '../src/db.js';
-import { categories } from './catalog.js';
+import { categories, products } from './catalog.js';
 
 const refreshImages = process.argv.includes('--refresh-images');
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -19,10 +19,12 @@ const image = (keywords) => images[keywords] || {};
 const defaultSettings = {
   banner_title: 'What do you need today?',
   banner_subtitle: 'Water cans, plumbers, kirana, medicines, bike repair and more — from trusted local partners near you.',
-  announcement: '🎉 Free delivery on your first 3 orders!',
+  announcement: '🎉 Free delivery on your first 3 orders across Hyderabad!',
   support_phone: '+91 98765 43210',
-  service_city: 'Hyderabad',
+  service_city: 'Hyderabad, Telangana',
 };
+// Settings still holding an older default are moved to the new one; admin-edited values are kept.
+const oldDefaults = { service_city: 'Hyderabad', announcement: '🎉 Free delivery on your first 3 orders!' };
 
 const client = await pool.connect();
 try {
@@ -63,8 +65,27 @@ try {
     }
   }
 
+  let productCount = 0;
+  for (const [key, items] of Object.entries(products)) {
+    const catSlug = key.slice(0, key.indexOf('/'));
+    const serviceName = key.slice(key.indexOf('/') + 1); // service names can contain "/"
+    const svc = await client.query('SELECT id, slug FROM services WHERE slug = $1', [`${catSlug}-${slugify(serviceName)}`]);
+    if (!svc.rows[0]) throw new Error(`Seed products: service "${key}" not found`);
+    for (const [pi, [name, brand, unit, price, mrp, icon]] of items.entries()) {
+      const r = await client.query(
+        `INSERT INTO products (service_id, slug, name, brand, unit, price, mrp, icon, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (slug) DO NOTHING`,
+        [svc.rows[0].id, `${svc.rows[0].slug}-${slugify(name)}`, name, brand || null, unit, price, mrp, icon, pi]
+      );
+      productCount += r.rowCount;
+    }
+  }
+
   for (const [key, value] of Object.entries(defaultSettings)) {
     await client.query('INSERT INTO site_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING', [key, value]);
+    if (oldDefaults[key]) {
+      await client.query('UPDATE site_settings SET value = $2 WHERE key = $1 AND value = $3', [key, value, oldDefaults[key]]);
+    }
   }
 
   const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123';
@@ -75,8 +96,11 @@ try {
   );
   await client.query('COMMIT');
 
-  const counts = await client.query('SELECT (SELECT count(*) FROM categories) c, (SELECT count(*) FROM services) s');
-  console.log(`Schema "${SCHEMA}" ready: ${counts.rows[0].c} categories, ${counts.rows[0].s} services.`);
+  const counts = await client.query(
+    'SELECT (SELECT count(*) FROM categories) c, (SELECT count(*) FROM services) s, (SELECT count(*) FROM products) p'
+  );
+  const { c, s, p } = counts.rows[0];
+  console.log(`Schema "${SCHEMA}" ready: ${c} categories, ${s} services, ${p} products (${productCount} new).`);
   if (refreshImages) console.log(`Refreshed ${refreshed} images from images.json.`);
   if (admin.rowCount) console.log(`Created admin user -> username: admin  password: ${adminPassword}`);
 } catch (err) {

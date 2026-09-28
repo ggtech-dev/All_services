@@ -67,6 +67,40 @@ CREATE TABLE IF NOT EXISTS site_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Items sold inside a service, e.g. Milk Delivery -> "Vijaya Toned Milk 500 ml".
+CREATE TABLE IF NOT EXISTS products (
+  id           SERIAL PRIMARY KEY,
+  service_id   INT          NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+  slug         VARCHAR(140) NOT NULL UNIQUE,
+  name         VARCHAR(120) NOT NULL,
+  brand        VARCHAR(60),
+  description  TEXT,
+  icon         VARCHAR(10),
+  image_url    TEXT,
+  image_credit TEXT,
+  unit         VARCHAR(30),
+  price        NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (price >= 0),
+  mrp          NUMERIC(10,2) CHECK (mrp IS NULL OR mrp >= 0),
+  in_stock     BOOLEAN      NOT NULL DEFAULT true,
+  is_active    BOOLEAN      NOT NULL DEFAULT true,
+  sort_order   INT          NOT NULL DEFAULT 0,
+  created_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  updated_at   TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS products_service_idx ON products(service_id);
+
+CREATE TABLE IF NOT EXISTS product_price_history (
+  id         SERIAL PRIMARY KEY,
+  product_id INT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  old_price  NUMERIC(10,2),
+  new_price  NUMERIC(10,2),
+  old_mrp    NUMERIC(10,2),
+  new_mrp    NUMERIC(10,2),
+  changed_by INT REFERENCES users(id) ON DELETE SET NULL,
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS product_price_history_idx ON product_price_history(product_id, changed_at DESC);
+
 -- Who changed what in the admin panel (filled by triggers).
 CREATE TABLE IF NOT EXISTS admin_audit_log (
   id         BIGSERIAL PRIMARY KEY,

@@ -14,6 +14,7 @@ export default function Dashboard() {
 
   const tiles = [
     { label: 'Live services', value: s.active_services, sub: `${s.services - s.active_services} hidden`, icon: '🧰', to: '/admin/services' },
+    { label: 'Products', value: s.active_products, sub: `${s.out_of_stock} out of stock`, icon: '🛍️', to: '/admin/products' },
     { label: 'Categories', value: s.active_categories, sub: `${s.categories - s.active_categories} hidden`, icon: '🗂️', to: '/admin/categories' },
     { label: 'Customers', value: s.customers, sub: `${s.partners} partners`, icon: '👥' },
     { label: 'Avg. price', value: `₹${Number(s.avg_price || 0).toLocaleString('en-IN')}`, sub: `${s.price_changes_7d} price changes this week`, icon: '₹', to: '/admin/pricing' },
@@ -77,7 +78,7 @@ export default function Dashboard() {
         <h3>Quick actions</h3>
         <div className="quick-grid">
           <Link to="/admin/services?new=1" className="quick">➕ Add a service</Link>
-          <Link to="/admin/categories?new=1" className="quick">🗂️ Add a category</Link>
+          <Link to="/admin/products?new=1" className="quick">🛍️ Add a product</Link>
           <Link to="/admin/pricing" className="quick">📈 Change prices in bulk</Link>
           <Link to="/admin/settings" className="quick">📝 Edit home banner</Link>
         </div>

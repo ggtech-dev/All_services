@@ -6,8 +6,9 @@ import { ToastProvider } from './ui.jsx';
 const NAV = [
   { to: '/admin', label: 'Dashboard', icon: '📊', end: true },
   { to: '/admin/services', label: 'Services', icon: '🧰' },
+  { to: '/admin/products', label: 'Products', icon: '🛍️' },
   { to: '/admin/categories', label: 'Categories', icon: '🗂️' },
-  { to: '/admin/pricing', label: 'Pricing', icon: '₹' },
+  { to: '/admin/pricing', label: 'Prices & items', icon: '₹' },
   { to: '/admin/settings', label: 'Site settings', icon: '⚙️' },
   { to: '/admin/activity', label: 'Activity log', icon: '🕘' },
 ];

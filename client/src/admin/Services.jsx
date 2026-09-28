@@ -1,59 +1,39 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api, formatEta } from '../api.js';
-import { ImagePicker, Modal, Switch, useLoad, useToast } from './ui.jsx';
+import { ImagePicker, Modal, PriceCell, RowImage, Switch, useLoad, useToast } from './ui.jsx';
 
-const EMPTY = {
+export const EMPTY_SERVICE = {
   category_id: '', name: '', description: '', image_url: '', image_credit: '',
   base_price: '', price_unit: '', eta_minutes: '', requires_license: false, is_active: true,
+};
+
+export const matchesFilter = (row, { category, q, status }) => {
+  const text = `${row.name} ${row.brand || ''} ${row.service_name || ''}`.toLowerCase();
+  return (
+    (!category || row.category_id === Number(category)) &&
+    (!q || text.includes(q.trim().toLowerCase())) &&
+    (!status || status === 'all' || (status === 'live') === row.is_active)
+  );
 };
 
 export default function Services() {
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const [filter, setFilter] = useState({ category: '', q: '', status: 'all' });
-  const [editing, setEditing] = useState(null); // service object, or EMPTY for new
+  const [editing, setEditing] = useState(null);
   const cats = useLoad(() => api('/admin/categories'));
   const list = useLoad(() => api('/admin/services'));
 
   // Dashboard "Add a service" shortcut links here with ?new=1
   useEffect(() => {
     if (params.get('new')) {
-      setEditing({ ...EMPTY });
+      setEditing({ ...EMPTY_SERVICE });
       setParams({}, { replace: true });
     }
   }, [params, setParams]);
 
-  const rows = useMemo(() => {
-    const q = filter.q.trim().toLowerCase();
-    return (list.data || []).filter(
-      (s) =>
-        (!filter.category || s.category_id === Number(filter.category)) &&
-        (!q || s.name.toLowerCase().includes(q)) &&
-        (filter.status === 'all' || (filter.status === 'live') === s.is_active)
-    );
-  }, [list.data, filter]);
-
-  const toggleActive = async (s, value) => {
-    try {
-      await api(`/admin/services/${s.id}/active`, { method: 'PATCH', body: { is_active: value } });
-      list.reload();
-      toast(`${s.name} is now ${value ? 'visible to customers' : 'hidden'}`);
-    } catch (e) {
-      toast(e.message, 'error');
-    }
-  };
-
-  const remove = async (s) => {
-    if (!confirm(`Delete "${s.name}" permanently?\n\nTip: use the Live switch to hide it instead.`)) return;
-    try {
-      await api(`/admin/services/${s.id}`, { method: 'DELETE' });
-      toast(`Deleted ${s.name}`);
-      list.reload();
-    } catch (e) {
-      toast(e.message, 'error');
-    }
-  };
+  const rows = useMemo(() => (list.data || []).filter((s) => matchesFilter(s, filter)), [list.data, filter]);
 
   return (
     <div className="stack">
@@ -73,56 +53,13 @@ export default function Services() {
           <option value="live">Live only</option>
           <option value="hidden">Hidden only</option>
         </select>
-        <button className="btn btn-primary" onClick={() => setEditing({ ...EMPTY, category_id: filter.category })}>
+        <button className="btn btn-primary" onClick={() => setEditing({ ...EMPTY_SERVICE, category_id: filter.category })}>
           ➕ Add service
         </button>
       </div>
 
       {list.error && <div className="alert">{list.error}</div>}
-      <section className="panel table-panel">
-        <div className="table-scroll">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Service</th>
-                <th>Category</th>
-                <th>Price (₹)</th>
-                <th>Time</th>
-                <th>Live</th>
-                <th aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((s) => (
-                <tr key={s.id} className={s.is_active ? '' : 'row-muted'}>
-                  <td>
-                    <div className="cell-service">
-                      <div className="thumb">
-                        {s.image_url ? <img src={s.image_url} alt="" loading="lazy" /> : <span>{s.category_icon}</span>}
-                      </div>
-                      <div>
-                        <b>{s.name}</b>
-                        {s.requires_license && <span className="mini-tag">Licensed</span>}
-                      </div>
-                    </div>
-                  </td>
-                  <td><span className="cat-pill" style={{ '--c': s.category_color }}>{s.category_icon} {s.category_name}</span></td>
-                  <td><PriceCell service={s} onSaved={list.reload} /></td>
-                  <td className="nowrap">{formatEta(s.eta_minutes)}</td>
-                  <td><Switch checked={s.is_active} onChange={(v) => toggleActive(s, v)} /></td>
-                  <td className="nowrap actions">
-                    <button className="btn btn-ghost btn-sm" onClick={() => setEditing(s)}>Edit</button>
-                    <button className="icon-btn danger" onClick={() => remove(s)} title="Delete">🗑️</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {list.loading && !list.data && <div className="center-block"><div className="spinner" /></div>}
-          {list.data && !rows.length && <p className="empty">No services match these filters.</p>}
-        </div>
-        {list.data && <div className="table-foot muted">Showing {rows.length} of {list.data.length} services</div>}
-      </section>
+      <ServicesTable rows={rows} total={list.data?.length} loading={list.loading && !list.data} reload={list.reload} onEdit={setEditing} />
 
       {editing && (
         <ServiceForm
@@ -140,66 +77,93 @@ export default function Services() {
   );
 }
 
-// Click the price to edit it in place; Enter saves, Esc cancels.
-function PriceCell({ service, onSaved }) {
+export function ServicesTable({ rows, total, loading, reload, onEdit }) {
   const toast = useToast();
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState('');
-  const [busy, setBusy] = useState(false);
 
-  const start = () => {
-    setValue(String(Number(service.base_price)));
-    setEditing(true);
+  const setPrice = async (s, value) => {
+    await api(`/admin/services/${s.id}/price`, { method: 'PATCH', body: { base_price: value } });
+    toast(`${s.name}: ₹${Number(s.base_price)} → ₹${Number(value)}`);
+    reload();
   };
-  const save = async () => {
-    if (Number(value) === Number(service.base_price)) return setEditing(false);
-    setBusy(true);
+
+  const toggleActive = async (s, value) => {
     try {
-      await api(`/admin/services/${service.id}/price`, { method: 'PATCH', body: { base_price: value } });
-      toast(`${service.name}: ₹${Number(service.base_price)} → ₹${Number(value)}`);
-      setEditing(false);
-      onSaved();
+      await api(`/admin/services/${s.id}/active`, { method: 'PATCH', body: { is_active: value } });
+      reload();
+      toast(`${s.name} is now ${value ? 'visible to customers' : 'hidden'}`);
     } catch (e) {
       toast(e.message, 'error');
-    } finally {
-      setBusy(false);
     }
   };
 
-  if (!editing) {
-    return (
-      <button className="price-btn" onClick={start} title="Click to change price">
-        <b>{Number(service.base_price) > 0 ? `₹${Number(service.base_price).toLocaleString('en-IN')}` : 'Free'}</b>
-        <small>{service.price_unit}</small>
-        <span className="pencil">✎</span>
-      </button>
-    );
-  }
+  const remove = async (s) => {
+    const extra = s.product_count ? `\nIts ${s.product_count} products will be deleted too.` : '';
+    if (!confirm(`Delete "${s.name}" permanently?${extra}\n\nTip: use the Live switch to hide it instead.`)) return;
+    try {
+      await api(`/admin/services/${s.id}`, { method: 'DELETE' });
+      toast(`Deleted ${s.name}`);
+      reload();
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  };
+
   return (
-    <div className="price-edit">
-      <span>₹</span>
-      <input
-        autoFocus
-        type="number"
-        min="0"
-        step="any"
-        value={value}
-        disabled={busy}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') save();
-          if (e.key === 'Escape') setEditing(false);
-        }}
-        onBlur={save}
-      />
-    </div>
+    <section className="panel table-panel">
+      <div className="table-scroll">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Service <small className="th-hint">· click photo to change</small></th>
+              <th>Category</th>
+              <th>Price (₹) <small className="th-hint">· click to edit</small></th>
+              <th>Time</th>
+              <th>Products</th>
+              <th>Live</th>
+              <th aria-label="Actions" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((s) => (
+              <tr key={s.id} className={s.is_active ? '' : 'row-muted'}>
+                <td>
+                  <div className="cell-service">
+                    <RowImage entity="services" id={s.id} url={s.image_url} icon={s.category_icon} onChanged={reload} />
+                    <div>
+                      <b>{s.name}</b>
+                      {s.requires_license && <span className="mini-tag">Licensed</span>}
+                    </div>
+                  </div>
+                </td>
+                <td><span className="cat-pill" style={{ '--c': s.category_color }}>{s.category_icon} {s.category_name}</span></td>
+                <td><PriceCell value={s.base_price} unit={s.price_unit} onSave={(v) => setPrice(s, v)} /></td>
+                <td className="nowrap">{formatEta(s.eta_minutes)}</td>
+                <td className="nowrap">
+                  <Link className="link" to={`/admin/products?service=${s.id}`}>
+                    {s.product_count ? `${s.product_count} items →` : '＋ Add'}
+                  </Link>
+                </td>
+                <td><Switch checked={s.is_active} onChange={(v) => toggleActive(s, v)} /></td>
+                <td className="nowrap actions">
+                  <button className="btn btn-ghost btn-sm" onClick={() => onEdit(s)}>Edit</button>
+                  <button className="icon-btn danger" onClick={() => remove(s)} title="Delete">🗑️</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {loading && <div className="center-block"><div className="spinner" /></div>}
+        {!loading && !rows.length && <p className="empty">No services match these filters.</p>}
+      </div>
+      {total != null && <div className="table-foot muted">Showing {rows.length} of {total} services</div>}
+    </section>
   );
 }
 
-function ServiceForm({ service, categories, onClose, onSaved }) {
+export function ServiceForm({ service, categories, onClose, onSaved }) {
   const isNew = !service.id;
   const [form, setForm] = useState(() => ({
-    ...EMPTY,
+    ...EMPTY_SERVICE,
     ...service,
     base_price: service.base_price === '' ? '' : Number(service.base_price),
     description: service.description || '',

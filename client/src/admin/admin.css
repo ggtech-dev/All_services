@@ -201,3 +201,27 @@ a.stat-tile:hover { transform: translateY(-2px); }
   .image-preview { width: 100%; }
   .bulk-form { grid-template-columns: 1fr; }
 }
+
+/* ---------- products & pricing ---------- */
+.th-hint { font-weight: 400; text-transform: none; letter-spacing: 0; color: #94a3b8; }
+.small { font-size: 12px; }
+.success-text { color: #16a34a; font-weight: 500; }
+.hint-line { margin: -8px 0 0; font-size: 13px; }
+.thumb-btn { border: 0; padding: 0; cursor: pointer; position: relative; font-size: 22px; }
+.thumb-overlay {
+  position: absolute; inset: 0; display: grid; place-items: center; font-size: 16px;
+  background: rgba(15, 23, 42, .55); opacity: 0; transition: opacity .15s;
+}
+.thumb-btn:hover .thumb-overlay, .thumb-btn:focus-visible .thumb-overlay, .thumb-btn:disabled .thumb-overlay { opacity: 1; }
+.price-mrp b { color: var(--muted); font-weight: 500; }
+.off-tag { display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 600; color: #16a34a; background: #dcfce7; padding: 1px 7px; border-radius: 999px; }
+.mini-tag.kind { background: #eef2ff; color: var(--primary); text-transform: capitalize; }
+.tabs { display: inline-flex; background: #e2e8f0; padding: 4px; border-radius: 12px; gap: 4px; }
+.tabs button { border: 0; background: transparent; font: inherit; font-weight: 600; font-size: 14px; padding: 8px 14px; border-radius: 9px; cursor: pointer; color: var(--muted); white-space: nowrap; }
+.tabs button.active { background: #fff; color: var(--text); box-shadow: 0 1px 4px rgba(15, 23, 42, .12); }
+.tabs .count { font-size: 12px; background: #f1f5f9; padding: 1px 7px; border-radius: 999px; margin-left: 4px; }
+.bulk-form { grid-template-columns: 1fr 1.3fr .8fr .8fr auto; }
+.preview-scroll { max-height: 320px; overflow-y: auto; }
+.preview-scroll thead th { position: sticky; top: 0; }
+.toolbar select { max-width: 240px; }
+.cat-pill { display: inline-block; max-width: 210px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }

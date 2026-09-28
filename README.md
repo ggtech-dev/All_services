@@ -1,6 +1,6 @@
 # All Services
 
-A local services super-app for India: customers browse service categories (home services, groceries, health, vehicle, personal, recycling, logistics) and book a service; admins manage the whole catalog, prices and home page from an admin panel.
+A local services super-app for Hyderabad, Telangana: customers browse service categories (home services, groceries, health, vehicle, personal, recycling, logistics), shop products inside services (milk, kirana, vegetables…) and book services; admins manage the whole catalog, products, prices, photos and home page from an admin panel.
 
 **Stack:** React (Vite) · Node.js (Express) · PostgreSQL (business logic in functions/procedures)
 
@@ -53,9 +53,10 @@ Default admin: `admin` / `Admin@123` (set `ADMIN_PASSWORD` before the first `db:
 | Page | What the admin can do |
 |---|---|
 | Dashboard | Counts, services per category, recent changes |
-| Services | Add / edit / delete services, change image (upload or URL), click a price to edit it in place, show/hide (Live switch) |
+| Services | Add / edit / delete services, click a price to edit it, click a photo to upload a new one, show/hide (Live switch) |
+| Products | Items inside a service (e.g. Milk Delivery → Vijaya Toned Milk 500 ml): add / edit / delete, price & MRP edited in place, photo upload, in-stock and Live switches |
 | Categories | Add / edit / delete categories, icon, colour, image, show/hide |
-| Pricing | Raise/lower prices by % for one category or everything, with preview and rounding; full price history |
+| Prices & items | One page with every product and service: edit any price or photo in the row, add new products/services, bulk % change (products, services or both) with full preview, price history |
 | Site settings | Home banner title/subtitle, announcement strip, city, support phone (live preview) |
 | Activity log | Every admin change: who, what, old → new |
 
@@ -67,15 +68,19 @@ All writes from the admin panel go through PostgreSQL functions/procedures in [`
 
 | Object | Purpose |
 |---|---|
-| `fn_save_service`, `fn_save_category` | Validate + create/update, generate unique slugs |
-| `fn_set_service_price` | Quick price edit |
-| `sp_bulk_update_prices` | % price change with rounding; free services stay free |
+| `fn_save_service`, `fn_save_category`, `fn_save_product` | Validate + create/update, generate unique slugs |
+| `fn_set_service_price`, `fn_set_product_price` | Quick price / MRP edit |
+| `sp_set_product_flag`, `sp_delete_product` | In-stock / Live switches, delete |
+| `sp_set_image` | One-click photo change for a category, service or product |
+| `sp_bulk_update_prices` | % price change for services, products or both, with rounding; free items stay free, products never exceed MRP |
 | `sp_set_service_active`, `sp_delete_service`, `sp_delete_category` | Show/hide and safe delete (a category with services can't be deleted) |
 | `sp_save_settings` | Upsert home page settings |
 | `fn_admin_stats` | Dashboard numbers in one call |
-| triggers | `service_price_history` on every price change, `admin_audit_log` on every category/service change, `updated_at` |
+| triggers | price history for services and products, `admin_audit_log` on every category/service/product change, `updated_at`, and a check that a product's selling price is never above its MRP |
 
-The API tags each admin transaction with the admin's user id (`SET LOCAL app.user_id`), so the triggers record who made each change.
+The API tags each admin transaction with the admin's user id (`SET LOCAL app.user_id`), so the triggers record who made each change. Every function pins its `search_path` to the app schema, so the triggers also work when data is edited directly in psql or pgAdmin.
+
+Seed products are Telangana staples (Vijaya & Heritage dairy, Sona Masoori rice, Guntur chilli powder, gongura, Osmania biscuits, murrel…). Products start with an emoji tile; admins upload real photos from the admin panel.
 
 `npm run db:setup` is safe to re-run: it upgrades the schema and adds missing seed rows but never overwrites changes made in the admin panel.
 
@@ -93,10 +98,14 @@ To re-fetch seed photos: delete entries from `images.json`, run `npm run db:imag
 | POST | `/api/auth/login` | – | `{ username, password, portal: 'user' \| 'admin' }` |
 | GET | `/api/auth/me` | user | Current user |
 | GET | `/api/categories`, `/api/categories/:slug` | – | Live categories / services |
+| GET | `/api/services/:slug` | – | A service with its live products |
 | GET | `/api/settings` | – | Home page settings |
 | GET | `/api/admin/stats`, `/api/admin/activity` | admin | Dashboard |
 | GET/POST/PUT/DELETE | `/api/admin/services[/:id]` | admin | Manage services |
 | PATCH | `/api/admin/services/:id/price`, `/:id/active` | admin | Quick price edit, show/hide |
+| GET/POST/PUT/DELETE | `/api/admin/products[/:id]` | admin | Manage products (`?service=`, `?category=`) |
+| PATCH | `/api/admin/products/:id/price`, `/:id/flag` | admin | `{field: price\|mrp, value}`, `{flag: in_stock\|is_active, value}` |
+| PATCH | `/api/admin/{categories,services,products}/:id/image` | admin | Replace a photo |
 | GET/POST/PUT/DELETE | `/api/admin/categories[/:id]` | admin | Manage categories |
 | POST | `/api/admin/prices/bulk` · GET `/api/admin/prices/history` | admin | Bulk pricing |
 | PUT | `/api/admin/settings` | admin | Save home page settings |
@@ -107,7 +116,8 @@ To re-fetch seed photos: delete entries from `images.json`, run `npm run db:imag
 - [x] Login / register, User vs Admin portal
 - [x] Categories and services with images
 - [x] Admin panel: services, categories, pricing, settings, activity log
-- [ ] Booking flow (address, time slot, notes)
+- [x] Products inside services, editable prices/MRP/photos/stock
+- [ ] Cart & checkout for products; booking flow for services (address, time slot, notes)
 - [ ] Admin: view bookings, assign partners
 - [ ] Partner app: accept and complete jobs
 - [ ] Booking status tracking

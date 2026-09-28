@@ -1,10 +1,10 @@
 import { api } from '../api.js';
 import { timeAgo, useLoad } from './ui.jsx';
 
-const ENTITY = { services: 'service', categories: 'category', site_settings: 'site settings' };
+const ENTITY = { services: 'service', products: 'product', categories: 'category', site_settings: 'site settings' };
 const FIELD = {
   base_price: 'price', price_unit: 'price unit', is_active: 'visibility', image_url: 'image',
-  eta_minutes: 'time', requires_license: 'licence flag', category_id: 'category', name: 'name',
+  eta_minutes: 'time', price: 'price', mrp: 'MRP', in_stock: 'stock', brand: 'brand', unit: 'pack size', service_id: 'service', requires_license: 'licence flag', category_id: 'category', name: 'name',
   description: 'description', icon: 'icon', color: 'colour', image_credit: 'image credit', sort_order: 'order',
 };
 
@@ -19,6 +19,10 @@ export function describeActivity(a) {
   const changes = Object.keys(d).filter((k) => k !== 'name' && k !== 'slug');
   if (changes.length === 1 && changes[0] === 'base_price')
     return `Changed price of “${d.name}”: ₹${d.base_price.from} → ₹${d.base_price.to}`;
+  if (changes.length === 1 && changes[0] === 'price')
+    return `Changed price of “${d.name}”: ₹${d.price.from} → ₹${d.price.to}`;
+  if (changes.length === 1 && changes[0] === 'in_stock')
+    return `Marked “${d.name}” ${d.in_stock.to ? 'in stock' : 'out of stock'}`;
   if (changes.length === 1 && changes[0] === 'is_active')
     return `${d.is_active.to ? 'Showed' : 'Hid'} ${what} “${d.name}”`;
   return `Edited ${what} “${d.name}” (${changes.map((k) => FIELD[k] || k).join(', ')})`;

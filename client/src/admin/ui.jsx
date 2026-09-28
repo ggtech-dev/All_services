@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { uploadImage } from '../api.js';
+import { api, uploadImage } from '../api.js';
 
 // ---------- toasts ----------
 const ToastContext = createContext(() => {});
@@ -109,6 +109,107 @@ export function ImagePicker({ url, credit, onChange, fallbackIcon = '🖼️' })
         {credit && <small className="muted credit-text" title={credit}>Credit: {credit}</small>}
       </div>
     </div>
+  );
+}
+
+// ---------- editable price: click to edit, Enter saves, Esc cancels ----------
+// onSave(value) should return a promise; value is '' when cleared (only if allowEmpty).
+export function PriceCell({ value, unit, onSave, allowEmpty = false, emptyLabel = 'Free', strike = false }) {
+  const toast = useToast();
+  const inputRef = useRef(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [busy, setBusy] = useState(false);
+  const has = value !== null && value !== undefined && value !== '';
+  const amount = Number(value);
+
+  const start = () => {
+    setDraft(has ? String(amount) : '');
+    setEditing(true);
+  };
+  // fromBlur: clicking away after a failed save closes the box and keeps the old price.
+  const save = async (fromBlur = false) => {
+    if (busy) return;
+    const same = draft === '' ? !has : has && Number(draft) === amount;
+    if (same) return setEditing(false);
+    if (draft === '' && !allowEmpty) return toast('Enter a price', 'error');
+    setBusy(true);
+    try {
+      await onSave(draft);
+      setEditing(false);
+    } catch (e) {
+      toast(e.message, 'error');
+      if (fromBlur) setEditing(false);
+      else inputRef.current?.focus(); // keep it open so the admin can fix the value or press Esc
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <button className={`price-btn ${strike ? 'price-mrp' : ''}`} onClick={start} title="Click to change">
+        <b>{has ? (amount > 0 ? `₹${amount.toLocaleString('en-IN')}` : 'Free') : emptyLabel}</b>
+        {unit && <small>{unit}</small>}
+        <span className="pencil">✎</span>
+      </button>
+    );
+  }
+  return (
+    <div className="price-edit">
+      <span>₹</span>
+      <input
+        ref={inputRef}
+        autoFocus
+        type="number"
+        min="0"
+        step="any"
+        value={draft}
+        readOnly={busy}
+        placeholder={allowEmpty ? 'none' : ''}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') save();
+          if (e.key === 'Escape') setEditing(false);
+        }}
+        onBlur={() => save(true)}
+      />
+    </div>
+  );
+}
+
+// ---------- row photo: click the thumbnail to upload a new one ----------
+export function RowImage({ entity, id, url, icon, onChanged }) {
+  const toast = useToast();
+  const fileRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [broken, setBroken] = useState(false);
+
+  useEffect(() => setBroken(false), [url]);
+
+  const onFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setBusy(true);
+    try {
+      const image_url = await uploadImage(file);
+      await api(`/admin/${entity}/${id}/image`, { method: 'PATCH', body: { image_url, image_credit: '' } });
+      toast('Photo updated');
+      onChanged?.();
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button type="button" className="thumb thumb-btn" onClick={() => fileRef.current.click()} title="Click to change photo" disabled={busy}>
+      {url && !broken ? <img src={url} alt="" loading="lazy" onError={() => setBroken(true)} /> : <span>{icon || '🖼️'}</span>}
+      <span className="thumb-overlay">{busy ? '…' : '📷'}</span>
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={onFile} />
+    </button>
   );
 }
 

@@ -82,7 +82,8 @@ router.delete('/categories/:id', h(async (req, res) => {
 // ---------- services ----------
 router.get('/services', h(async (req, res) => {
   const { rows } = await query(
-    `SELECT s.*, c.name AS category_name, c.icon AS category_icon, c.color AS category_color
+    `SELECT s.*, c.name AS category_name, c.icon AS category_icon, c.color AS category_color,
+            (SELECT count(*) FROM products p WHERE p.service_id = s.id)::int AS product_count
        FROM services s JOIN categories c ON c.id = s.category_id
       WHERE ($1::int IS NULL OR s.category_id = $1)
         AND ($2::text IS NULL OR s.name ILIKE '%' || $2 || '%')
@@ -122,25 +123,96 @@ router.delete('/services/:id', h(async (req, res) => {
   res.status(204).end();
 }));
 
+// ---------- products ----------
+router.get('/products', h(async (req, res) => {
+  const { rows } = await query(
+    `SELECT p.*, s.name AS service_name, s.slug AS service_slug, s.category_id,
+            c.name AS category_name, c.icon AS category_icon, c.color AS category_color
+       FROM products p
+       JOIN services s ON s.id = p.service_id
+       JOIN categories c ON c.id = s.category_id
+      WHERE ($1::int IS NULL OR p.service_id = $1)
+        AND ($2::int IS NULL OR s.category_id = $2)
+      ORDER BY c.sort_order, s.sort_order, p.sort_order, p.id`,
+    [num(req.query.service), num(req.query.category)]
+  );
+  res.json(rows);
+}));
+
+const saveProduct = (id) => h(async (req, res) => {
+  const b = req.body || {};
+  const row = await asActor(req.user.id, async (db) =>
+    (await db.query('SELECT * FROM fn_save_product($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)', [
+      id === null ? null : req.params.id, num(b.service_id), b.name, b.brand, b.description, b.icon,
+      b.image_url, b.image_credit, b.unit, num(b.price), num(b.mrp), bool(b.in_stock), bool(b.is_active),
+    ])).rows[0]
+  );
+  res.status(id === null ? 201 : 200).json(row);
+});
+router.post('/products', saveProduct(null));
+router.put('/products/:id', saveProduct());
+
+// body: { field: 'price' | 'mrp', value }
+router.patch('/products/:id/price', h(async (req, res) => {
+  const row = await asActor(req.user.id, async (db) =>
+    (await db.query('SELECT * FROM fn_set_product_price($1,$2,$3)', [req.params.id, req.body?.field, num(req.body?.value)])).rows[0]
+  );
+  res.json(row);
+}));
+
+// body: { flag: 'in_stock' | 'is_active', value }
+router.patch('/products/:id/flag', h(async (req, res) => {
+  await asActor(req.user.id, (db) =>
+    db.query('CALL sp_set_product_flag($1,$2,$3)', [req.params.id, req.body?.flag, Boolean(req.body?.value)])
+  );
+  res.status(204).end();
+}));
+
+router.delete('/products/:id', h(async (req, res) => {
+  await asActor(req.user.id, (db) => db.query('CALL sp_delete_product($1)', [req.params.id]));
+  res.status(204).end();
+}));
+
+// ---------- one-click image change for any row ----------
+for (const entity of ['categories', 'services', 'products']) {
+  router.patch(`/${entity}/:id/image`, h(async (req, res) => {
+    await asActor(req.user.id, (db) =>
+      db.query('CALL sp_set_image($1,$2,$3,$4)', [entity, req.params.id, req.body?.image_url, req.body?.image_credit])
+    );
+    res.status(204).end();
+  }));
+}
+
 // ---------- pricing ----------
 router.post('/prices/bulk', h(async (req, res) => {
-  const { categoryId, percent, roundTo } = req.body || {};
+  const { categoryId, percent, roundTo, target = 'services' } = req.body || {};
   const { rows } = await asActor(req.user.id, (db) =>
-    db.query('CALL sp_bulk_update_prices($1,$2,$3,NULL)', [num(categoryId), num(percent), num(roundTo) || 1])
+    db.query('CALL sp_bulk_update_prices($1,$2,$3,$4,NULL)', [num(categoryId), num(percent), num(roundTo) || 1, target])
   );
   res.json({ updated: rows[0].p_updated });
 }));
 
+// Service and product price changes, newest first.
 router.get('/prices/history', h(async (req, res) => {
   const { rows } = await query(
-    `SELECT h.*, s.name AS service_name, c.icon AS category_icon, u.username AS changed_by_name
-       FROM service_price_history h
-       JOIN services s ON s.id = h.service_id
-       JOIN categories c ON c.id = s.category_id
-       LEFT JOIN users u ON u.id = h.changed_by
-      WHERE ($1::int IS NULL OR h.service_id = $1)
-      ORDER BY h.changed_at DESC LIMIT 100`,
-    [num(req.query.service)]
+    `SELECT * FROM (
+       SELECT 'service' AS kind, h.id, s.name, c.icon AS category_icon, NULL AS unit,
+              h.old_price, h.new_price, h.old_unit, h.new_unit, NULL::numeric AS old_mrp, NULL::numeric AS new_mrp,
+              u.username AS changed_by_name, h.changed_at
+         FROM service_price_history h
+         JOIN services s ON s.id = h.service_id
+         JOIN categories c ON c.id = s.category_id
+         LEFT JOIN users u ON u.id = h.changed_by
+       UNION ALL
+       SELECT 'product', h.id, p.name, c.icon, p.unit,
+              h.old_price, h.new_price, NULL, NULL, h.old_mrp, h.new_mrp,
+              u.username, h.changed_at
+         FROM product_price_history h
+         JOIN products p ON p.id = h.product_id
+         JOIN services s ON s.id = p.service_id
+         JOIN categories c ON c.id = s.category_id
+         LEFT JOIN users u ON u.id = h.changed_by
+     ) x ORDER BY changed_at DESC LIMIT 150`
   );
   res.json(rows);
 }));

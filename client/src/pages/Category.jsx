@@ -49,9 +49,15 @@ export default function Category() {
                 <span className="price">{formatPrice(s.base_price, s.price_unit)}</span>
                 <span className="eta">⏱ {formatEta(s.eta_minutes)}</span>
               </div>
-              <button className="btn btn-primary btn-sm" style={{ '--accent': category.color }} onClick={() => alert('Booking comes in the next step!')}>
-                Book now
-              </button>
+              {s.product_count > 0 ? (
+                <Link to={`/service/${s.slug}`} className="btn btn-primary btn-sm btn-center" style={{ '--accent': category.color }}>
+                  Shop {s.product_count} items →
+                </Link>
+              ) : (
+                <button className="btn btn-primary btn-sm" style={{ '--accent': category.color }} onClick={() => alert('Booking comes in the next step!')}>
+                  Book now
+                </button>
+              )}
             </div>
           </article>
         ))}

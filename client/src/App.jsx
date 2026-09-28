@@ -8,6 +8,8 @@ import Category from './pages/Category.jsx';
 import AdminLayout from './admin/AdminLayout.jsx';
 import Dashboard from './admin/Dashboard.jsx';
 import Services from './admin/Services.jsx';
+import Products from './admin/Products.jsx';
+import ServiceShop from './pages/ServiceShop.jsx';
 import Categories from './admin/Categories.jsx';
 import Pricing from './admin/Pricing.jsx';
 import Settings from './admin/Settings.jsx';
@@ -43,9 +45,11 @@ export default function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/" element={<Protected><Home /></Protected>} />
       <Route path="/category/:slug" element={<Protected><Category /></Protected>} />
+      <Route path="/service/:slug" element={<Protected><ServiceShop /></Protected>} />
       <Route path="/admin" element={<AdminOnly><AdminLayout /></AdminOnly>}>
         <Route index element={<Dashboard />} />
         <Route path="services" element={<Services />} />
+        <Route path="products" element={<Products />} />
         <Route path="categories" element={<Categories />} />
         <Route path="pricing" element={<Pricing />} />
         <Route path="settings" element={<Settings />} />
