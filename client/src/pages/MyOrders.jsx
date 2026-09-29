@@ -45,7 +45,7 @@ export default function MyOrders() {
             </div>
             <div className="order-row-side">
               <b>{rupees(o.total)}</b>
-              {ACTIVE.includes(o.status) && o.status !== 'placed' && <span className="otp-chip">OTP {o.delivery_otp}</span>}
+              {o.otp_required && ACTIVE.includes(o.status) && o.status !== 'placed' && <span className="otp-chip">OTP {o.delivery_otp}</span>}
               <span className="link">Track →</span>
             </div>
           </Link>

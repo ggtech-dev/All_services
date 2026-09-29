@@ -226,7 +226,15 @@ function ActiveOrder({ order, busy, run }) {
         </div>
       )}
 
-      {order.status === 'picked_up' && (
+      {order.status === 'picked_up' && !order.otp_required && (
+        <button className="btn btn-primary btn-block btn-success" disabled={busy}
+          onClick={() => confirm(`Mark order #${order.id} as ${isService ? 'completed' : 'delivered'}?`) &&
+            run(() => api(`/agent/orders/${order.id}/status`, { method: 'POST', body: { status: 'delivered' } }), '🎉 Delivered! You are free for the next order.')}>
+          ✅ Mark {isService ? 'completed' : 'delivered'}
+        </button>
+      )}
+
+      {order.status === 'picked_up' && order.otp_required && (
         <form className="otp-form" onSubmit={(e) => {
           e.preventDefault();
           run(() => api(`/agent/orders/${order.id}/status`, { method: 'POST', body: { status: 'delivered', otp } }), '🎉 Delivered! You are free for the next order.');

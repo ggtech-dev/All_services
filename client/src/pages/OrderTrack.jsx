@@ -90,7 +90,7 @@ export default function OrderTrack() {
           {order.status === 'delivered' && <p className="muted">{isService ? 'Completed' : 'Delivered'} at {time(order.delivered_at)}. Thank you!</p>}
           {order.status === 'cancelled' && <p className="muted">Cancelled: {order.cancel_reason}</p>}
         </div>
-        {['assigned', 'picked_up'].includes(order.status) && (
+        {order.otp_required && ['assigned', 'picked_up'].includes(order.status) && (
           <div className="otp-box" title={`Share this code with the ${who} only when you receive the ${isService ? 'service' : 'order'}`}>
             <small>Delivery OTP</small>
             <b>{order.delivery_otp}</b>

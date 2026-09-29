@@ -9,6 +9,7 @@ const NAV = [
   { to: '/admin', label: 'Dashboard', icon: '📊', end: true },
   { to: '/admin/orders', label: 'Manage orders', icon: '📦', badge: 'waiting' },
   { to: '/admin/agents', label: 'Manage agents', icon: '🛵', badge: 'pending_applications' },
+  { to: '/admin/reports', label: 'Reports', icon: '📈' },
   { to: '/admin/live', label: 'Live map', icon: '📍' },
   { to: '/admin/service-types', label: 'Agent types', icon: '🧩' },
   { to: '/admin/services', label: 'Services', icon: '🧰' },

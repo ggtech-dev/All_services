@@ -115,6 +115,17 @@ Every **service** has one type of work (`services.skill_code`) and every **agent
 - Change a service's type in **Services** (dropdown in the row); change an agent's types in **Manage agents** → agent → *Types of work*. New applicants choose their types on the apply page.
 - Customers see the right word: “Your plumber”, “Your electrician”, “Your delivery partner”.
 
+## Reports
+
+Admin → **📈 Reports** (date range: today, yesterday, 7 / 30 days, this / last month, custom — India time):
+
+- Headline numbers with change vs the previous period: orders, delivered, revenue, average order value, average time to deliver, cancelled, customers ordering / new sign-ups, agent pay.
+- Charts (hover for details): orders per day, revenue per day, busy hours.
+- Tables: agent performance (delivered, in progress, released, avg. minutes, order value, earnings, cash in hand — sortable), by agent type, by category, top areas, top selling items, top customers, cancellation reasons. Every table has a CSV download, plus **Download all orders (CSV)** for Excel.
+- Database: `fn_report` and `fn_report_kpis` in [`server/db/reports.sql`](server/db/reports.sql).
+
+Delivery confirmation: by default the agent just taps **Mark delivered**. Turn on **Site settings → Ask customer OTP on delivery** to require the customer's 4-digit code instead.
+
 ## Promotions (home page ads)
 
 - Customers see a **big sliding banner** (auto-slides every 5 s, arrows, dots, swipe on phones) and a row of **small offer tiles** below the welcome banner.

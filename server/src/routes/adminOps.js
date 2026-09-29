@@ -220,6 +220,52 @@ router.post('/agents/:id/wallet', h(async (req, res) => {
   res.status(204).end();
 }));
 
+// ---------- reports ----------
+const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+
+// ?from=YYYY-MM-DD&to=YYYY-MM-DD (India dates, inclusive)
+router.get('/reports', h(async (req, res) => {
+  const { from, to } = req.query;
+  if (!isDate(from) || !isDate(to)) return res.status(400).json({ error: 'Choose a valid date range' });
+  const { rows } = await query('SELECT fn_report($1::date, $2::date) AS r', [from, to]);
+  res.json(rows[0].r);
+}));
+
+// Every order in the range as a CSV file (opens in Excel / Google Sheets).
+router.get('/reports/orders.csv', h(async (req, res) => {
+  const { from, to } = req.query;
+  if (!isDate(from) || !isDate(to)) return res.status(400).json({ error: 'Choose a valid date range' });
+  const { rows } = await query(
+    `SELECT o.id AS "Order", to_char(o.created_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD HH24:MI') AS "Placed (IST)",
+            o.status AS "Status", st.name AS "Agent type", o.contact_name AS "Customer", o.contact_phone AS "Phone",
+            l.name AS "Area", o.pincode AS "Pincode",
+            (SELECT string_agg(i.name || ' x' || i.qty, '; ' ORDER BY i.id) FROM order_items i WHERE i.order_id = o.id) AS "Items",
+            o.subtotal AS "Items total", o.delivery_fee AS "Delivery fee", o.total AS "Total",
+            ag.full_name AS "Agent", ag.phone AS "Agent phone",
+            to_char(o.delivered_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD HH24:MI') AS "Delivered (IST)",
+            round(extract(epoch FROM o.delivered_at - o.created_at) / 60) AS "Minutes to deliver",
+            o.agent_earning AS "Agent pay", o.cancel_reason AS "Cancel reason"
+       FROM orders o
+       JOIN localities l ON l.id = o.locality_id
+       JOIN service_types st ON st.code = o.skill_code
+       LEFT JOIN users ag ON ag.id = o.agent_id
+      WHERE (o.created_at AT TIME ZONE 'Asia/Kolkata')::date BETWEEN $1::date AND $2::date
+      ORDER BY o.id`,
+    [from, to]
+  );
+  const cols = rows.length ? Object.keys(rows[0]) : ['Order'];
+  // Quote every cell; neutralise values starting with = + - @ so spreadsheets don't run them as formulas.
+  const cell = (v) => {
+    let s = v == null ? '' : String(v);
+    if (/^[=+\-@]/.test(s)) s = `'${s}`;
+    return `"${s.replace(/"/g, '""')}"`;
+  };
+  const csv = [cols.map(cell).join(','), ...rows.map((r) => cols.map((c) => cell(r[c])).join(','))].join('\r\n');
+  res.set('Content-Type', 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="orders_${from}_to_${to}.csv"`);
+  res.send('﻿' + csv); // BOM so Excel shows ₹ and Telugu names correctly
+}));
+
 // ---------- service types (which agents do which services) ----------
 router.get('/service-types', h(async (req, res) => {
   const { rows } = await query('SELECT * FROM fn_service_type_overview()');

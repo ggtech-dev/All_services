@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
-import { useToast } from './ui.jsx';
+import { Switch, useToast } from './ui.jsx';
 
 const FIELDS = [
   { key: 'banner_title', label: 'Home banner title', placeholder: 'What do you need today?' },
@@ -12,6 +12,7 @@ const FIELDS = [
   { key: 'free_delivery_orders', label: 'Free delivery for first N orders', number: true, hint: 'New customers get this many orders with free delivery.' },
   { key: 'agent_pay_per_order', label: 'Agent pay per delivery (₹)', number: true, hint: 'Added to the agent wallet when they deliver.' },
   { key: 'agent_max_active_orders', label: 'Orders an agent can carry at once', number: true, hint: '1 = agent must deliver before taking the next order.' },
+  { key: 'require_delivery_otp', label: 'Ask customer OTP on delivery', toggle: true, hint: 'On: the agent must enter the 4-digit code from the customer’s app to finish. Off: the agent just taps “Mark delivered”.' },
 ];
 
 export default function Settings() {
@@ -52,7 +53,9 @@ export default function Settings() {
         {FIELDS.map((f) => (
           <label key={f.key}>
             {f.label}
-            {f.textarea ? (
+            {f.toggle ? (
+              <Switch checked={form[f.key] === '1'} onChange={(v) => setForm({ ...form, [f.key]: v ? '1' : '0' })} label={form[f.key] === '1' ? 'On' : 'Off'} />
+            ) : f.textarea ? (
               <textarea rows={3} value={form[f.key] || ''} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />
             ) : (
               <input type={f.number ? 'number' : 'text'} min={f.number ? 0 : undefined} value={form[f.key] || ''} placeholder={f.placeholder} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />

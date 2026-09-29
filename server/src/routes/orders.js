@@ -14,6 +14,7 @@ export async function loadOrder(id, { customerId } = {}) {
     `SELECT o.*, l.name AS locality_name, l.lat AS locality_lat, l.lng AS locality_lng,
             cu.full_name AS customer_name, cu.username AS customer_username, cu.phone AS customer_phone,
             ag.full_name AS agent_name, ag.phone AS agent_phone, a.vehicle_type, a.vehicle_number,
+            (fn_setting_num('require_delivery_otp', 0) = 1) AS otp_required,
             s.name AS service_name, st.name AS skill_name, st.agent_title, st.icon AS skill_icon,
             (SELECT c.icon FROM order_items i
                LEFT JOIN products p ON p.id = i.product_id
@@ -84,7 +85,7 @@ router.post('/', h(async (req, res) => {
 router.get('/', h(async (req, res) => {
   const { rows } = await query(
     `SELECT o.id, o.kind, o.status, o.total, o.created_at, o.delivered_at, o.delivery_otp,
-            ag.full_name AS agent_name, st.agent_title,
+            ag.full_name AS agent_name, st.agent_title, (fn_setting_num('require_delivery_otp', 0) = 1) AS otp_required,
             (SELECT count(*) FROM order_items i WHERE i.order_id = o.id)::int AS item_count,
             (SELECT string_agg(i.name || CASE WHEN i.qty > 1 THEN ' x' || i.qty ELSE '' END, ', ' ORDER BY i.id)
                FROM order_items i WHERE i.order_id = o.id) AS summary

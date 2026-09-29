@@ -406,7 +406,8 @@ BEGIN
     UPDATE orders SET status = 'picked_up', picked_up_at = now() WHERE id = v.id RETURNING * INTO v;
 
   ELSIF p_status = 'delivered' AND v.status = 'picked_up' THEN
-    IF coalesce(trim(p_otp), '') <> v.delivery_otp THEN
+    -- The customer's OTP is only checked when the admin turned on "Ask customer OTP on delivery".
+    IF fn_setting_num('require_delivery_otp', 0) = 1 AND coalesce(trim(p_otp), '') <> v.delivery_otp THEN
       RAISE EXCEPTION 'Wrong OTP. Ask the customer for the 4-digit code shown in their app.' USING ERRCODE = '22023';
     END IF;
     v_pay := fn_setting_num('agent_pay_per_order', 25);

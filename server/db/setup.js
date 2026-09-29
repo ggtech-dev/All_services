@@ -26,6 +26,7 @@ const defaultSettings = {
   free_delivery_orders: '3',
   agent_pay_per_order: '25',
   agent_max_active_orders: '1',
+  require_delivery_otp: '0', // 1 = agent must enter the customer's OTP to mark delivered
 };
 // Settings still holding an older default are moved to the new one; admin-edited values are kept.
 const oldDefaults = { service_city: 'Hyderabad', announcement: '🎉 Free delivery on your first 3 orders!' };
@@ -39,6 +40,7 @@ try {
   await client.query(await sql('./orders.sql'));
   await client.query(await sql('./auth.sql'));
   await client.query(await sql('./promotions.sql'));
+  await client.query(await sql('./reports.sql'));
 
   await client.query('BEGIN');
 

@@ -96,7 +96,7 @@ export function AgentWallet() {
             </div>
           ))}
         </div>
-        <div className="report-grid">
+        <div className="agent-report-grid">
           <div><small>Total deliveries</small><b>{s.total_deliveries}</b></div>
           <div><small>Avg. time per order</small><b>{s.avg_delivery_minutes != null ? `${s.avg_delivery_minutes} min` : '—'}</b></div>
           <div><small>This week</small><b>{rupees(s.last7.reduce((n, d) => n + Number(d.earnings), 0))}</b></div>

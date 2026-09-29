@@ -22,6 +22,7 @@ const Services = lazy(() => import('./admin/Services.jsx'));
 const ServiceTypes = lazy(() => import('./admin/ServiceTypes.jsx'));
 const LiveMap = lazy(() => import('./admin/LiveMap.jsx'));
 const AdminPromotions = lazy(() => import('./admin/Promotions.jsx'));
+const Reports = lazy(() => import('./admin/Reports.jsx'));
 const Products = lazy(() => import('./admin/Products.jsx'));
 const Categories = lazy(() => import('./admin/Categories.jsx'));
 const Pricing = lazy(() => import('./admin/Pricing.jsx'));
@@ -89,6 +90,7 @@ export default function App() {
         <Route path="agents" element={<Agents />} />
         <Route path="live" element={<LiveMap />} />
         <Route path="promotions" element={<AdminPromotions />} />
+        <Route path="reports" element={<Reports />} />
         <Route path="service-types" element={<ServiceTypes />} />
         <Route path="services" element={<Services />} />
         <Route path="products" element={<Products />} />

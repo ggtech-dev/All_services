@@ -182,7 +182,7 @@ function OrderDetail({ id, onClose, onChanged }) {
           <StatusBadge status={order.status} kind={order.kind} />
           <span className="skill-chip small">{order.skill_icon} {order.skill_name}</span>
           <span className="muted small">{stamps.map(([l, t]) => `${l} ${time(t)}`).join(' · ')}</span>
-          {ACTIVE.includes(order.status) && <span className="od-otp" title="Customer's delivery OTP">OTP {order.delivery_otp}</span>}
+          {order.otp_required && ACTIVE.includes(order.status) && <span className="od-otp" title="Customer's delivery OTP">OTP {order.delivery_otp}</span>}
         </div>
 
         <div className="od-grid">
