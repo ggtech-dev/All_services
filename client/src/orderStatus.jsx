@@ -66,3 +66,7 @@ export function usePoll(fn, ms, active = true) {
     return () => clearInterval(id);
   }, [ms, active]);
 }
+
+// "just now", "40 s ago", "3 min ago" for location freshness.
+export const secondsAgo = (s) =>
+  s == null ? '' : s < 15 ? 'just now' : s < 90 ? `${s} s ago` : s < 3600 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} h ago`;

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './auth.jsx';
 import Navbar from './components/Navbar.jsx';
@@ -9,21 +10,25 @@ import ServiceShop from './pages/ServiceShop.jsx';
 import Checkout from './pages/Checkout.jsx';
 import MyOrders from './pages/MyOrders.jsx';
 import OrderTrack from './pages/OrderTrack.jsx';
-import AgentApply from './pages/AgentApply.jsx';
-import AdminLayout from './admin/AdminLayout.jsx';
-import Dashboard from './admin/Dashboard.jsx';
-import Orders from './admin/Orders.jsx';
-import Agents from './admin/Agents.jsx';
-import Services from './admin/Services.jsx';
-import ServiceTypes from './admin/ServiceTypes.jsx';
-import Products from './admin/Products.jsx';
-import Categories from './admin/Categories.jsx';
-import Pricing from './admin/Pricing.jsx';
-import Settings from './admin/Settings.jsx';
-import Activity from './admin/Activity.jsx';
-import AgentLayout from './agent/AgentLayout.jsx';
-import AgentHome from './agent/AgentHome.jsx';
-import { AgentOrders, AgentProfile, AgentWallet } from './agent/AgentPages.jsx';
+// Admin panel, agent app and the agent application page are loaded on demand.
+const AgentApply = lazy(() => import('./pages/AgentApply.jsx'));
+const AdminLayout = lazy(() => import('./admin/AdminLayout.jsx'));
+const Dashboard = lazy(() => import('./admin/Dashboard.jsx'));
+const Orders = lazy(() => import('./admin/Orders.jsx'));
+const Agents = lazy(() => import('./admin/Agents.jsx'));
+const Services = lazy(() => import('./admin/Services.jsx'));
+const ServiceTypes = lazy(() => import('./admin/ServiceTypes.jsx'));
+const LiveMap = lazy(() => import('./admin/LiveMap.jsx'));
+const Products = lazy(() => import('./admin/Products.jsx'));
+const Categories = lazy(() => import('./admin/Categories.jsx'));
+const Pricing = lazy(() => import('./admin/Pricing.jsx'));
+const Settings = lazy(() => import('./admin/Settings.jsx'));
+const Activity = lazy(() => import('./admin/Activity.jsx'));
+const AgentLayout = lazy(() => import('./agent/AgentLayout.jsx'));
+const AgentHome = lazy(() => import('./agent/AgentHome.jsx'));
+const AgentOrders = lazy(() => import('./agent/AgentPages.jsx').then((m) => ({ default: m.AgentOrders })));
+const AgentWallet = lazy(() => import('./agent/AgentPages.jsx').then((m) => ({ default: m.AgentWallet })));
+const AgentProfile = lazy(() => import('./agent/AgentPages.jsx').then((m) => ({ default: m.AgentProfile })));
 
 const Loading = () => <div className="center-screen"><div className="spinner" /></div>;
 const HOME = { admin: '/admin', agent: '/agent' };
@@ -53,6 +58,7 @@ function RoleOnly({ role, children }) {
 
 export default function App() {
   return (
+    <Suspense fallback={<Loading />}>
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -76,6 +82,7 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="orders" element={<Orders />} />
         <Route path="agents" element={<Agents />} />
+        <Route path="live" element={<LiveMap />} />
         <Route path="service-types" element={<ServiceTypes />} />
         <Route path="services" element={<Services />} />
         <Route path="products" element={<Products />} />
@@ -86,5 +93,6 @@ export default function App() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   );
 }

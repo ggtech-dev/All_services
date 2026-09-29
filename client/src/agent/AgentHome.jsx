@@ -11,7 +11,7 @@ const nearest = (list, lat, lng) =>
   }, null);
 
 export default function AgentHome() {
-  const { me, reload } = useOutletContext();
+  const { me, reload, location } = useOutletContext();
   const toast = useToast();
   const [localities, setLocalities] = useState([]);
   const [active, setActive] = useState([]);
@@ -45,6 +45,11 @@ export default function AgentHome() {
     load().catch((e) => toast(e.message, 'error'));
   }, [load, toast]);
   usePoll(() => load().catch(() => {}), 8000, online || active.length > 0);
+  // First GPS fix just reached the server: refresh so distances use the real position right away.
+  const gpsOn = location.status === 'on';
+  useEffect(() => {
+    if (gpsOn) load().catch(() => {});
+  }, [gpsOn, load]);
 
   const run = async (fn, okMessage) => {
     setBusy(true);
@@ -88,6 +93,8 @@ export default function AgentHome() {
           <span />
         </button>
       </section>
+
+      {online && <LocationStatus location={location} />}
 
       <div className="area-row">
         <label>
@@ -151,6 +158,22 @@ export default function AgentHome() {
       )}
     </div>
   );
+}
+
+function LocationStatus({ location }) {
+  if (location.status === 'on') {
+    return <div className="gps-status gps-on">📍 Live location on{location.accuracy ? ` · ±${location.accuracy} m` : ''} — customers and admin can see you on the map</div>;
+  }
+  if (location.status === 'waiting') return <div className="gps-status">📡 Getting your GPS location… please allow location access.</div>;
+  if (location.status === 'denied') {
+    return (
+      <div className="gps-status gps-off">
+        ⚠️ Location is blocked. Allow location for this site in your browser settings — customers can't see you coming and you won't get the nearest orders.
+      </div>
+    );
+  }
+  if (location.status === 'unavailable') return <div className="gps-status gps-off">⚠️ GPS is not available. Turn on location on your phone.</div>;
+  return null;
 }
 
 function ActiveOrder({ order, busy, run }) {

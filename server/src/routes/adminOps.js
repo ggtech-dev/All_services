@@ -2,7 +2,7 @@ import { Router } from 'express';
 import path from 'node:path';
 import { query, asActor } from '../db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
-import { loadOrder } from './orders.js';
+import { LIVE_SQL, TRAIL_SQL, loadOrder } from './orders.js';
 import { DOC_DIR, DOC_FIELDS, createAgent, docUpload, parseSkills } from './agent.js';
 
 // Admin: manage orders and delivery agents.
@@ -72,6 +72,51 @@ router.post('/orders/:id/cancel', h(async (req, res) => {
     db.query('CALL sp_cancel_order($1,$2,true,$3)', [Number(req.params.id), req.user.id, req.body?.reason || null])
   );
   res.status(204).end();
+}));
+
+// Live position of an order's agent (for the order detail map).
+router.get('/orders/:id/live', h(async (req, res) => {
+  const { rows } = await query(`${LIVE_SQL} WHERE o.id = $1`, [Number(req.params.id)]);
+  if (!rows[0]) return res.status(404).json({ error: 'Order not found' });
+  const trail = (await query(TRAIL_SQL, [rows[0].id])).rows;
+  res.json({ ...rows[0], trail });
+}));
+
+// ---------- live map: every active agent with a known position ----------
+router.get('/live', h(async (req, res) => {
+  const { rows } = await query(
+    `SELECT v.user_id, v.full_name, v.phone, v.state, v.skills, v.vehicle_type, v.vehicle_number, v.locality_name,
+            v.last_lat::float AS lat, v.last_lng::float AS lng, v.last_accuracy_m AS accuracy_m, v.last_location_at,
+            extract(epoch FROM now() - v.last_location_at)::int AS age_seconds,
+            o.id AS order_id, o.status AS order_status, o.contact_name, ol.name AS order_locality,
+            coalesce(o.dest_lat, ol.lat)::float AS dest_lat, coalesce(o.dest_lng, ol.lng)::float AS dest_lng
+       FROM v_agents v
+       LEFT JOIN LATERAL (SELECT * FROM orders o WHERE o.agent_id = v.user_id AND o.status IN ('assigned', 'picked_up')
+                           ORDER BY o.assigned_at DESC LIMIT 1) o ON true
+       LEFT JOIN localities ol ON ol.id = o.locality_id
+      WHERE v.status = 'active' AND v.last_lat IS NOT NULL
+      ORDER BY v.last_location_at DESC`
+  );
+  res.json(rows);
+}));
+
+// One agent's movement today (or ?hours=N, max 72) plus their current order, for the tracking panel.
+router.get('/agents/:id/track', h(async (req, res) => {
+  const id = Number(req.params.id);
+  const hours = Math.min(Math.max(Number(req.query.hours) || 12, 1), 72);
+  const [{ rows: trail }, { rows: order }] = await Promise.all([
+    query(
+      `SELECT lat::float, lng::float, order_id, recorded_at FROM agent_location_trail
+        WHERE agent_id = $1 AND recorded_at > now() - make_interval(hours => $2)
+        ORDER BY recorded_at LIMIT 2000`,
+      [id, hours]
+    ),
+    query(
+      `${LIVE_SQL} WHERE o.agent_id = $1 AND o.status IN ('assigned', 'picked_up') ORDER BY o.assigned_at DESC LIMIT 1`,
+      [id]
+    ),
+  ]);
+  res.json({ trail, order: order[0] || null });
 }));
 
 // ---------- customers (for the orders page) ----------

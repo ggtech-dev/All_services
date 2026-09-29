@@ -103,6 +103,40 @@ router.get('/:id', h(async (req, res) => {
   res.json(order);
 }));
 
+// Live position of the agent on the customer's own order — only while it is assigned / on the way.
+export const LIVE_SQL = `SELECT o.id, o.status, o.agent_id,
+            coalesce(o.dest_lat, l.lat)::float AS dest_lat, coalesce(o.dest_lng, l.lng)::float AS dest_lng,
+            (o.dest_lat IS NOT NULL) AS exact_pin,
+            a.last_lat::float AS agent_lat, a.last_lng::float AS agent_lng, a.last_accuracy_m AS accuracy_m,
+            a.last_location_at,
+            extract(epoch FROM now() - a.last_location_at)::int AS age_seconds,
+            fn_distance_km(a.last_lat, a.last_lng, coalesce(o.dest_lat, l.lat), coalesce(o.dest_lng, l.lng))::float AS distance_km,
+            fn_eta_minutes(fn_distance_km(a.last_lat, a.last_lng, coalesce(o.dest_lat, l.lat), coalesce(o.dest_lng, l.lng))) AS eta_minutes
+       FROM orders o
+       JOIN localities l ON l.id = o.locality_id
+       LEFT JOIN agents a ON a.user_id = o.agent_id`;
+export const TRAIL_SQL = `SELECT lat::float, lng::float, recorded_at FROM agent_location_trail
+      WHERE order_id = $1 ORDER BY recorded_at LIMIT 500`;
+
+router.get('/:id/live', h(async (req, res) => {
+  const { rows } = await query(`${LIVE_SQL} WHERE o.id = $1 AND o.customer_id = $2`, [Number(req.params.id), req.user.id]);
+  const live = rows[0];
+  if (!live) return res.status(404).json({ error: 'Order not found' });
+  if (!['assigned', 'picked_up'].includes(live.status) || live.agent_lat == null) {
+    // Nothing to show (not yet assigned, finished, or agent location unknown): send the destination only.
+    return res.json({ status: live.status, dest: { lat: live.dest_lat, lng: live.dest_lng }, agent: null });
+  }
+  const trail = live.status === 'picked_up' ? (await query(TRAIL_SQL, [live.id])).rows : [];
+  res.json({
+    status: live.status,
+    dest: { lat: live.dest_lat, lng: live.dest_lng, exact: live.exact_pin },
+    agent: { lat: live.agent_lat, lng: live.agent_lng, accuracy_m: live.accuracy_m, age_seconds: live.age_seconds },
+    distance_km: live.distance_km,
+    eta_minutes: live.eta_minutes,
+    trail,
+  });
+}));
+
 router.post('/:id/cancel', h(async (req, res) => {
   await asActor(req.user.id, (db) =>
     db.query('CALL sp_cancel_order($1,$2,false,$3)', [Number(req.params.id), req.user.id, req.body?.reason || null])

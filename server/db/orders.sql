@@ -104,11 +104,18 @@ BEGIN
   END IF;
 
   INSERT INTO orders (customer_id, kind, contact_name, contact_phone, address_line, landmark, locality_id, pincode,
-                      slot, notes, subtotal, delivery_fee, total, delivery_otp, skill_code)
+                      slot, notes, subtotal, delivery_fee, total, delivery_otp, skill_code, dest_lat, dest_lng)
   VALUES (p_customer_id, v_kind, trim(p_contact->>'name'), v_phone, trim(p_contact->>'address_line'),
           nullif(trim(p_contact->>'landmark'), ''), (p_contact->>'locality_id')::int,
           nullif(trim(p_contact->>'pincode'), ''), nullif(trim(p_slot), ''), nullif(trim(p_notes), ''),
-          0, v_fee, 0, lpad(floor(random() * 10000)::int::text, 4, '0'), coalesce(v_skill, 'delivery'))
+          0, v_fee, 0, lpad(floor(random() * 10000)::int::text, 4, '0'), coalesce(v_skill, 'delivery'),
+          -- exact pin only if it looks like a real point in India
+          CASE WHEN (p_contact->>'lat') ~ '^-?\d+(\.\d+)?$' AND (p_contact->>'lat')::numeric BETWEEN 6 AND 37.5
+                AND (p_contact->>'lng') ~ '^-?\d+(\.\d+)?$' AND (p_contact->>'lng')::numeric BETWEEN 68 AND 97.5
+               THEN round((p_contact->>'lat')::numeric, 6) END,
+          CASE WHEN (p_contact->>'lat') ~ '^-?\d+(\.\d+)?$' AND (p_contact->>'lat')::numeric BETWEEN 6 AND 37.5
+                AND (p_contact->>'lng') ~ '^-?\d+(\.\d+)?$' AND (p_contact->>'lng')::numeric BETWEEN 68 AND 97.5
+               THEN round((p_contact->>'lng')::numeric, 6) END)
   RETURNING * INTO v;
 
   IF v_kind = 'service' THEN
@@ -574,3 +581,51 @@ BEGIN
     RAISE EXCEPTION 'Service not found' USING ERRCODE = 'P0002';
   END IF;
 END $$;
+
+-- ============ live GPS ============
+
+-- Agent app reports its position. Ignored if it arrives less than 5 s after the previous one.
+-- While the agent has an active order the point is also kept in the trail for that order.
+-- Returns true when the point was stored.
+CREATE OR REPLACE FUNCTION fn_agent_location(p_agent_id INT, p_lat NUMERIC, p_lng NUMERIC, p_accuracy INT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql SET search_path FROM CURRENT AS $$
+DECLARE
+  a agents;
+  v_order INT;
+BEGIN
+  -- India bounding box: rejects nonsense and 0,0 from broken devices.
+  IF p_lat IS NULL OR p_lng IS NULL OR p_lat NOT BETWEEN 6 AND 37.5 OR p_lng NOT BETWEEN 68 AND 97.5 THEN
+    RAISE EXCEPTION 'Location looks invalid' USING ERRCODE = '22023';
+  END IF;
+  SELECT * INTO a FROM agents WHERE user_id = p_agent_id;
+  IF NOT FOUND OR a.status <> 'active' THEN
+    RAISE EXCEPTION 'Your agent account is not active' USING ERRCODE = '55000';
+  END IF;
+  IF a.last_location_at > now() - interval '5 seconds' THEN
+    RETURN false;
+  END IF;
+
+  UPDATE agents
+     SET last_lat = round(p_lat, 6), last_lng = round(p_lng, 6), last_accuracy_m = p_accuracy,
+         last_location_at = now(), last_seen_at = now()
+   WHERE user_id = p_agent_id;
+
+  SELECT id INTO v_order FROM orders
+   WHERE agent_id = p_agent_id AND status IN ('assigned', 'picked_up')
+   ORDER BY assigned_at DESC LIMIT 1;
+  INSERT INTO agent_location_trail (agent_id, order_id, lat, lng, accuracy_m)
+  VALUES (p_agent_id, v_order, round(p_lat, 6), round(p_lng, 6), p_accuracy);
+
+  -- Keep the trail small: 3 days of history.
+  IF random() < 0.01 THEN
+    DELETE FROM agent_location_trail WHERE recorded_at < now() - interval '3 days';
+  END IF;
+  RETURN true;
+END $$;
+
+-- Rough arrival time in minutes: straight-line distance at ~18 km/h city speed, plus 2 minutes to park and reach the door.
+CREATE OR REPLACE FUNCTION fn_eta_minutes(p_km NUMERIC) RETURNS INT
+LANGUAGE sql IMMUTABLE SET search_path FROM CURRENT AS $$
+  SELECT CASE WHEN p_km IS NULL THEN NULL ELSE ceil(p_km / 18 * 60 * 1.3)::int + 2 END
+$$;

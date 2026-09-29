@@ -315,3 +315,29 @@ a.stat-tile:hover { transform: translateY(-2px); }
 .free-count { font-weight: 600; color: #15803d; }
 .skills-edit { background: #f8fafc; border-radius: 12px; padding: 14px; }
 .skills-save { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+
+/* ---------- live map page ---------- */
+.live-layout { display: grid; grid-template-columns: 1fr 320px; gap: 16px; align-items: start; }
+.live-map-panel { padding: 12px; }
+.live-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; margin-bottom: 10px; align-items: center; }
+.live-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+.live-side { display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 120px); }
+.live-filters { display: flex; gap: 8px; }
+.live-filters select { padding: 8px; font-size: 13px; }
+.live-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+.live-row { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; font: inherit; text-align: left; cursor: pointer; }
+.live-row:hover, .live-row.active { border-color: var(--primary); background: #eef2ff; }
+.live-row-main { flex: 1; display: flex; flex-direction: column; min-width: 0; font-size: 14px; }
+.live-row-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.live-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.live-detail { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.live-detail-head { display: flex; gap: 10px; align-items: center; }
+.live-detail-head > div:nth-child(2) { flex: 1; }
+.live-order { background: #eff6ff; border-radius: 10px; padding: 10px; font-size: 14px; }
+.live-links { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; }
+.loc-empty { background: #f8fafc; border-radius: 12px; padding: 12px 14px; }
+@media (max-width: 1000px) {
+  .live-layout { grid-template-columns: 1fr; }
+  .live-side { max-height: none; }
+}
+.toasts { pointer-events: none; }

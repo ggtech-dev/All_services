@@ -242,3 +242,27 @@ ALTER TABLE orders   ADD COLUMN IF NOT EXISTS skill_code VARCHAR(30) REFERENCES 
 ALTER TABLE agents   ADD COLUMN IF NOT EXISTS skills TEXT[] NOT NULL DEFAULT '{delivery}';
 CREATE INDEX IF NOT EXISTS orders_skill_idx ON orders(skill_code) WHERE status = 'placed';
 CREATE INDEX IF NOT EXISTS agents_skills_idx ON agents USING gin (skills);
+
+-- ============ live GPS ============
+-- Latest position of each agent (sent by the agent app while online).
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS last_lat         NUMERIC(9,6);
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS last_lng         NUMERIC(9,6);
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS last_accuracy_m  INT;
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS last_location_at TIMESTAMPTZ;
+
+-- Exact delivery point when the customer shares it at checkout (otherwise the area centre is used).
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS dest_lat NUMERIC(9,6);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS dest_lng NUMERIC(9,6);
+
+-- Short movement history, for the path drawn on the maps. Old points are pruned automatically.
+CREATE TABLE IF NOT EXISTS agent_location_trail (
+  id          BIGSERIAL PRIMARY KEY,
+  agent_id    INT NOT NULL REFERENCES agents(user_id) ON DELETE CASCADE,
+  order_id    INT REFERENCES orders(id) ON DELETE SET NULL,
+  lat         NUMERIC(9,6) NOT NULL,
+  lng         NUMERIC(9,6) NOT NULL,
+  accuracy_m  INT,
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS trail_agent_idx ON agent_location_trail(agent_id, recorded_at DESC);
+CREATE INDEX IF NOT EXISTS trail_order_idx ON agent_location_trail(order_id, recorded_at);

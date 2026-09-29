@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { Modal, useLoad, useToast } from './ui.jsx';
+import MapView, { secondsAgo } from '../components/MapView.jsx';
 import { ACTIVE, STATUS, StatusBadge, VEHICLES, rupees, statusLabel, time, usePoll, when } from '../orderStatus.jsx';
 
 const TABS = [
@@ -121,6 +122,24 @@ export default function Orders() {
   );
 }
 
+function OrderLiveMap({ orderId, icon }) {
+  const [live, setLive] = useState(null);
+  const load = useCallback(() => api(`/admin/orders/${orderId}/live`).then(setLive).catch(() => {}), [orderId]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  usePoll(load, 8000);
+  if (!live) return null;
+  const markers = [{ id: 'dest', lat: live.dest_lat, lng: live.dest_lng, emoji: '🏠', color: '#16a34a', label: live.exact_pin ? 'Customer pin' : 'Customer area' }];
+  if (live.agent_lat != null) markers.push({ id: 'agent', lat: live.agent_lat, lng: live.agent_lng, emoji: icon || '🛵', color: '#4f46e5', pulse: true, label: `Agent · ${secondsAgo(live.age_seconds)}` });
+  return (
+    <section>
+      <h4>Live tracking <span className="muted small">{live.agent_lat != null ? `· ${live.distance_km} km away · ~${live.eta_minutes} min · updated ${secondsAgo(live.age_seconds)}` : '· agent has not shared location yet'}</span></h4>
+      <MapView markers={markers} path={live.trail.map((p) => [p.lat, p.lng])} fitKey={live.agent_lat != null ? 'both' : 'dest'} height={240} />
+    </section>
+  );
+}
+
 function OrderDetail({ id, onClose, onChanged }) {
   const toast = useToast();
   const [order, setOrder] = useState(null);
@@ -219,6 +238,8 @@ function OrderDetail({ id, onClose, onChanged }) {
             </div>
           )}
         </section>
+
+        {['assigned', 'picked_up'].includes(order.status) && <OrderLiveMap orderId={order.id} icon={order.skill_icon} />}
 
         <section>
           <h4>Timeline</h4>

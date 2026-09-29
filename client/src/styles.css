@@ -313,3 +313,16 @@ input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 2
 .avail-where .skill-chip { align-self: flex-start; margin-top: 4px; }
 .gap-alert { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 10px 14px; border-radius: 10px; font-size: 14px; margin: 0; }
 .gap-alert a { color: var(--primary); font-weight: 600; }
+
+/* ---------- maps & live GPS ---------- */
+.map-view { width: 100%; border-radius: 12px; overflow: hidden; z-index: 0; background: #e5e7eb; }
+.map-pin { width: 38px; height: 38px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--pin); display: grid; place-items: center; box-shadow: 0 3px 8px rgba(0,0,0,.35); border: 2px solid #fff; }
+.map-pin span { transform: rotate(45deg); font-size: 18px; line-height: 1; }
+.map-pin-pulse::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; border: 3px solid var(--pin); animation: pin-pulse 1.6s infinite; }
+@keyframes pin-pulse { from { opacity: .8; transform: scale(.7); } to { opacity: 0; transform: scale(1.5); } }
+.live-panel { display: flex; flex-direction: column; gap: 10px; }
+.live-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.pin-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.gps-status { font-size: 13px; padding: 8px 12px; border-radius: 10px; background: #f1f5f9; color: var(--muted); }
+.gps-on { background: #f0fdf4; color: #15803d; font-weight: 600; }
+.gps-off { background: #fef2f2; color: #b91c1c; }

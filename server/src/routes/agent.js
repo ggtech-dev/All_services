@@ -95,6 +95,15 @@ router.get('/me', h(async (req, res) => {
   res.json({ agent: agent[0], stats: stats[0].s });
 }));
 
+// body: { lat, lng, accuracy } — sent every ~10 s by the agent app while online.
+router.post('/location', h(async (req, res) => {
+  const { lat, lng, accuracy } = req.body || {};
+  const { rows } = await query('SELECT fn_agent_location($1,$2,$3,$4) AS stored', [
+    req.user.id, Number(lat), Number(lng), accuracy == null ? null : Math.round(Number(accuracy)),
+  ]);
+  res.json({ stored: rows[0].stored });
+}));
+
 // body: { online: bool, locality_id? }
 router.patch('/status', h(async (req, res) => {
   await query('CALL sp_set_agent_online($1,$2,$3)', [
@@ -111,11 +120,15 @@ router.get('/available', h(async (req, res) => {
             (SELECT count(*) FROM order_items i WHERE i.order_id = o.id)::int AS item_count,
             (SELECT string_agg(i.name || CASE WHEN i.qty > 1 THEN ' x' || i.qty ELSE '' END, ', ' ORDER BY i.id)
                FROM order_items i WHERE i.order_id = o.id) AS summary,
-            CASE WHEN me.lat IS NOT NULL THEN fn_distance_km(me.lat, me.lng, l.lat, l.lng) END AS distance_km
+            CASE WHEN me.lat IS NOT NULL
+                 THEN fn_distance_km(me.lat, me.lng, coalesce(o.dest_lat, l.lat), coalesce(o.dest_lng, l.lng)) END AS distance_km
        FROM orders o
        JOIN localities l ON l.id = o.locality_id
        JOIN service_types st ON st.code = o.skill_code
-       LEFT JOIN (SELECT l2.lat, l2.lng FROM agents a JOIN localities l2 ON l2.id = a.locality_id WHERE a.user_id = $1) me ON true
+       -- where the agent is: live GPS if under 10 minutes old, otherwise the centre of their chosen area
+       LEFT JOIN (SELECT CASE WHEN a.last_location_at > now() - interval '10 minutes' THEN a.last_lat ELSE l2.lat END AS lat,
+                         CASE WHEN a.last_location_at > now() - interval '10 minutes' THEN a.last_lng ELSE l2.lng END AS lng
+                    FROM agents a LEFT JOIN localities l2 ON l2.id = a.locality_id WHERE a.user_id = $1) me ON true
       WHERE o.status = 'placed' AND o.agent_id IS NULL
         AND o.skill_code = ANY ((SELECT skills FROM agents WHERE user_id = $1)::text[])
       ORDER BY distance_km NULLS LAST, o.created_at

@@ -4,6 +4,13 @@ import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { useCart } from '../cart.jsx';
 import { rupees } from '../orderStatus.jsx';
+import MapView from '../components/LazyMap.jsx';
+
+const nearestLocality = (list, lat, lng) =>
+  list.reduce((best, l) => {
+    const d = (l.lat - lat) ** 2 + (l.lng - lng) ** 2;
+    return !best || d < best.d ? { ...l, d } : best;
+  }, null);
 
 const SLOTS = {
   products: ['As soon as possible', 'Today 7–9 AM', 'Today 12–2 PM', 'Today 5–7 PM', 'Tomorrow 7–9 AM', 'Tomorrow 5–7 PM'],
@@ -25,6 +32,25 @@ export default function Checkout() {
   const [form, setForm] = useState({ name: user.fullName || '', phone: user.phone || '', address_line: '', landmark: '', locality_id: '', pincode: '' });
   const [slot, setSlot] = useState(SLOTS[kind][0]);
   const [notes, setNotes] = useState('');
+  const [pin, setPin] = useState(null); // { lat, lng, accuracy } from the phone's GPS
+  const [pinMsg, setPinMsg] = useState('');
+
+  const pinMyLocation = () => {
+    if (!navigator.geolocation) return setPinMsg('Location is not available on this device');
+    setPinMsg('Finding you…');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const p = { lat: +pos.coords.latitude.toFixed(6), lng: +pos.coords.longitude.toFixed(6), accuracy: Math.round(pos.coords.accuracy) };
+        setPin(p);
+        setPinMsg('');
+        // Pick the nearest area automatically if the customer hasn't chosen one.
+        const l = nearestLocality(localities, p.lat, p.lng);
+        if (l && !form.locality_id) setForm((f) => ({ ...f, locality_id: String(l.id), pincode: f.pincode || l.pincode || '' }));
+      },
+      () => setPinMsg('Please allow location access, or just fill in the address'),
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  };
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -68,7 +94,7 @@ export default function Checkout() {
     setError('');
     setBusy(true);
     try {
-      const body = { contact: { ...form, locality_id: Number(form.locality_id) }, slot, notes };
+      const body = { contact: { ...form, locality_id: Number(form.locality_id), ...(pin && { lat: pin.lat, lng: pin.lng }) }, slot, notes };
       if (kind === 'service') body.service_id = service.id;
       else body.items = cart.items.map((i) => ({ product_id: i.product_id, qty: i.qty }));
       const order = await api('/orders', { method: 'POST', body });
@@ -103,6 +129,12 @@ export default function Checkout() {
             <label>Pincode<input value={form.pincode} onChange={set('pincode')} inputMode="numeric" maxLength={6} placeholder="500072" /></label>
           </div>
           <label>Landmark (optional)<input value={form.landmark} onChange={set('landmark')} placeholder="e.g. Near KPHB metro station" /></label>
+          <div className="pin-row">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={pinMyLocation}>📍 {pin ? 'Update my location' : 'Use my current location'}</button>
+            {pin ? <small className="success-text">Exact location pinned ✓ (±{pin.accuracy} m) — the {kind === 'service' ? 'partner' : 'agent'} will navigate right to your door</small>
+              : <small className="muted">{pinMsg || 'Optional: helps the agent find your door'}</small>}
+          </div>
+          {pin && <MapView markers={[{ id: 'pin', lat: pin.lat, lng: pin.lng, emoji: '🏠', color: '#16a34a', accuracy_m: pin.accuracy }]} fitKey={`${pin.lat},${pin.lng}`} height={180} />}
         </section>
 
         <section className="panel form">

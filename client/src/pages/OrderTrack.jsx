@@ -1,7 +1,39 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
-import { ACTIVE, STEPS, VEHICLES, rupees, stepLabels, statusLabel, time, usePoll, when } from '../orderStatus.jsx';
+import { ACTIVE, STEPS, VEHICLES, rupees, secondsAgo, stepLabels, statusLabel, time, usePoll, when } from '../orderStatus.jsx';
+import MapView from '../components/LazyMap.jsx';
+
+// Live map of the assigned agent coming to the customer. Refreshes every 8 seconds.
+function LiveTrack({ orderId, who, icon }) {
+  const [live, setLive] = useState(null);
+  const load = useCallback(() => api(`/orders/${orderId}/live`).then(setLive).catch(() => {}), [orderId]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  usePoll(load, 8000);
+  if (!live) return null;
+
+  const markers = [{ id: 'home', lat: live.dest.lat, lng: live.dest.lng, emoji: '🏠', color: '#16a34a', label: live.dest.exact ? 'Your location' : 'Your area' }];
+  if (live.agent) markers.push({ id: 'agent', ...live.agent, emoji: icon || '🛵', color: '#4f46e5', pulse: true, label: `Your ${who}` });
+  const path = (live.trail || []).map((p) => [p.lat, p.lng]);
+
+  return (
+    <section className="panel live-panel">
+      <div className="live-head">
+        {live.agent ? (
+          <>
+            <b>{icon || '🛵'} {live.distance_km} km away · arriving in ~{live.eta_minutes} min</b>
+            <small className="muted">Updated {secondsAgo(live.agent.age_seconds)}</small>
+          </>
+        ) : (
+          <b className="muted">📡 Waiting for your {who}'s location…</b>
+        )}
+      </div>
+      <MapView markers={markers} path={path} fitKey={live.agent ? 'agent' : 'home'} height={300} />
+    </section>
+  );
+}
 
 // Live tracking page for one order. Refreshes every 8 seconds while the order is active.
 export default function OrderTrack() {
@@ -78,6 +110,8 @@ export default function OrderTrack() {
           ))}
         </ol>
       )}
+
+      {['assigned', 'picked_up'].includes(order.status) && <LiveTrack orderId={order.id} who={who} icon={order.skill_icon} />}
 
       <div className="track-grid">
         {order.agent_name && (

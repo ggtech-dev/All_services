@@ -3,7 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { api } from '../api.js';
 import { ToastProvider } from '../admin/ui.jsx';
 import { StateBadge, usePoll } from '../orderStatus.jsx';
-import './agent.css';
+import { useLiveLocation } from './useLiveLocation.js';
 
 // Mobile-first shell for delivery agents: header with online state, bottom tab bar.
 export default function AgentLayout() {
@@ -15,6 +15,8 @@ export default function AgentLayout() {
     reload();
   }, [reload]);
   usePoll(reload, 20000);
+  // GPS is shared only while the agent is online (on duty).
+  const location = useLiveLocation(!!me?.agent.is_online);
 
   if (error) return <div className="center-screen"><div className="alert">{error}</div></div>;
   if (!me) return <div className="center-screen"><div className="spinner" /></div>;
@@ -33,7 +35,7 @@ export default function AgentLayout() {
           <span className="agent-brand">🛵 All Services</span>
         </header>
         <main className="agent-main">
-          <Outlet context={{ me, reload }} />
+          <Outlet context={{ me, reload, location }} />
         </main>
         <nav className="agent-tabs">
           <NavLink to="/agent" end><span>🏠</span>Home</NavLink>

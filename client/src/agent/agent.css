@@ -127,3 +127,6 @@
 /* Keep buttons and the OTP box clear of the fixed bottom tab bar when scrolled/focused into view. */
 .agent-main button, .agent-main input, .agent-main select, .agent-main a { scroll-margin-bottom: 110px; }
 html:has(.agent-app) { scroll-padding-bottom: 90px; }
+
+/* Messages sit above the bottom tab bar and never block taps on buttons underneath. */
+.agent-app + .toasts { bottom: 84px; left: 12px; right: 12px; align-items: stretch; }

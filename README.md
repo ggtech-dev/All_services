@@ -115,6 +115,16 @@ Every **service** has one type of work (`services.skill_code`) and every **agent
 - Change a service's type in **Services** (dropdown in the row); change an agent's types in **Manage agents** → agent → *Types of work*. New applicants choose their types on the apply page.
 - Customers see the right word: “Your plumber”, “Your electrician”, “Your delivery partner”.
 
+## Live GPS tracking (free)
+
+- **Agent app**: while an agent is online, the phone's GPS (browser Geolocation API) is sent to the server every ~10 s, with a "📍 Live location on" indicator. The agent must allow location access and keep the app open (browsers pause GPS in the background).
+- **Customer**: on an assigned / on-the-way order, the tracking page shows a map with the agent 🛵, their home 🏠, the path, distance and an estimated arrival time. Only for their own order, and only until it is delivered.
+- **Checkout**: "📍 Use my current location" pins the exact door point (and picks the nearest area automatically).
+- **Admin**: **📍 Live map** with every agent (🟢 free, 🔵 on delivery, grey = position older than 3 min); click an agent for their trail, current order, distance and ETA. The agent detail and order detail also show maps.
+- "Orders near you" and the admin's nearest-agent list use live GPS when it is fresh, otherwise the chosen area.
+- Maps: [Leaflet](https://leafletjs.com) + OpenStreetMap tiles, **no API key or payment**. For heavy traffic switch the tile URL in `client/src/components/MapView.jsx` to a free-tier provider (MapTiler, Stadia).
+- Production needs **HTTPS** for browser GPS (localhost works for testing). Trail points older than 3 days are pruned.
+
 ## How an order flows
 
 1. Customer places an order (prices are recalculated in the database, never trusted from the browser). A 4-digit **delivery OTP** is created.
@@ -163,6 +173,6 @@ To re-fetch seed photos: delete entries from `images.json`, run `npm run db:imag
 - [x] Admin: manage orders, manage agents
 - [ ] Online payments (UPI / Razorpay)
 - [ ] SMS / push notifications for new orders
-- [ ] Live GPS tracking of the agent on a map
+- [x] Live GPS tracking (agent → customer & admin maps)
 - [ ] Customer ratings for agents
 

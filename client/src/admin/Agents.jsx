@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../api.js';
 import { Modal, timeAgo, useLoad, useToast } from './ui.jsx';
-import { StateBadge, StatusBadge, VEHICLES, rupees, when } from '../orderStatus.jsx';
+import { StateBadge, StatusBadge, VEHICLES, rupees, usePoll, when } from '../orderStatus.jsx';
 import { AGENT_DOCS, AgentForm, SkillPicker } from '../pages/AgentApply.jsx';
+import MapView, { secondsAgo } from '../components/MapView.jsx';
 
 const TABS = [
   ['', 'All agents'],
@@ -23,6 +24,10 @@ export default function Agents() {
   const [adding, setAdding] = useState(false);
   const [params] = useSearchParams();
   const [skill, setSkill] = useState(params.get('skill') || '');
+  useEffect(() => {
+    // Links from the live map / elsewhere: /admin/agents?open=<agent id>
+    if (params.get('open')) setOpenId(Number(params.get('open')));
+  }, [params]);
   const all = useLoad(() => api('/admin/agents'));
   const types = useLoad(() => api('/service-types'));
   const typeOf = (code) => types.data?.find((t) => t.code === code);
@@ -157,6 +162,36 @@ function DocThumb({ agentId, field, label }) {
   );
 }
 
+// Where the agent is now + their path over the last 12 hours.
+function AgentLocation({ agent }) {
+  const [track, setTrack] = useState(null);
+  const [pos, setPos] = useState(null);
+  const load = useCallback(() => {
+    api(`/admin/agents/${agent.user_id}/track`).then(setTrack).catch(() => {});
+    api('/admin/live').then((all) => setPos(all.find((x) => x.user_id === agent.user_id) || null)).catch(() => {});
+  }, [agent.user_id]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  usePoll(load, 10000);
+
+  if (!track) return null;
+  if (!pos) {
+    return <section className="loc-empty"><h4>Live location</h4><p className="muted small">No GPS yet. The agent's location appears here when they go online in the agent app and allow location access.</p></section>;
+  }
+  const markers = [{ id: 'me', lat: pos.lat, lng: pos.lng, emoji: '🛵', color: '#4f46e5', pulse: true, accuracy_m: pos.accuracy_m, label: `${agent.full_name} · ${secondsAgo(pos.age_seconds)}` }];
+  if (track.order) markers.push({ id: 'dest', lat: track.order.dest_lat, lng: track.order.dest_lng, emoji: '🏠', color: '#16a34a', label: `Order #${track.order.id}` });
+  return (
+    <section>
+      <div className="panel-head">
+        <h4>Live location <span className="muted small">· updated {secondsAgo(pos.age_seconds)}{track.order && ` · order #${track.order.id} is ${track.order.distance_km} km away (~${track.order.eta_minutes} min)`}</span></h4>
+        <Link className="link" to="/admin/live">Open live map →</Link>
+      </div>
+      <MapView markers={markers} path={track.trail.map((p) => [p.lat, p.lng])} fitKey={agent.user_id} height={260} />
+    </section>
+  );
+}
+
 const WALLET_ACTIONS = {
   payout: { label: 'Pay agent', hint: 'Money you paid the agent (UPI/bank/cash)' },
   cod_deposited: { label: 'Cash received', hint: 'COD cash the agent handed over' },
@@ -257,6 +292,8 @@ function AgentDetail({ id, types, onClose, onChanged }) {
             </div>
           )}
         </section>
+
+        {a.status === 'active' && <AgentLocation agent={a} />}
 
         <div className="od-grid">
           <section>
