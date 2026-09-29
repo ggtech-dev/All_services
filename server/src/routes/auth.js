@@ -81,31 +81,42 @@ async function portalError(user, portal) {
   return null;
 }
 
-// ---------- register / password login ----------
-router.post('/register', h(async (req, res) => {
+// ---------- sign-up (email verified with a code before the account exists) ----------
+// Step 1. body: { username, email, password, fullName, phone } → emails a 6-digit code.
+router.post('/register/start', h(async (req, res) => {
   const { username, password, fullName, phone, email } = req.body || {};
   if (!username || !password || !email) return res.status(400).json({ error: 'Username, email and password are required' });
-  if (!/^[a-zA-Z0-9_.]{3,30}$/.test(username)) return res.status(400).json({ error: 'Username must be 3-30 letters, numbers, _ or .' });
-  if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email.trim())) return res.status(400).json({ error: 'Enter a valid email address' });
   if (!validPassword(password)) return res.status(400).json({ error: PASSWORD_RULE });
-
-  const hash = await bcrypt.hash(password, 10);
-  try {
-    const { rows } = await query(
-      `INSERT INTO users (username, password_hash, full_name, phone, email)
-       VALUES (lower($1), $2, $3, $4, lower(trim($5))) RETURNING *`,
-      [username, hash, fullName || null, phone || null, email]
-    );
-    log(rows[0].id, email, 'registered', null, ipOf(req));
-    res.status(201).json({ token: signToken(rows[0]), user: publicUser(rows[0]) });
-  } catch (err) {
-    if (err.code === '23505') {
-      const msg = err.constraint === 'users_email_unique' ? 'An account with this email already exists. Try logging in with an email code.' : 'That username is already taken';
-      return res.status(409).json({ error: msg });
-    }
-    throw err;
-  }
+  const code = newCode();
+  await query('SELECT fn_register_start($1,$2,$3,$4,$5,$6,$7)', [
+    username, email, await bcrypt.hash(password, 10), fullName || null, phone || null,
+    hashCode(email, 'register', code), ipOf(req),
+  ]);
+  await sendOtpEmail({ to: email.trim(), name: fullName || username, code, purpose: 'register', minutes: OTP_MINUTES });
+  res.json({
+    sent: true, message: `We sent a 6-digit code to ${email.trim()}.`, minutes: OTP_MINUTES, testMode: TEST_MODE,
+    devCode: TEST_MODE && process.env.NODE_ENV !== 'production' ? code : undefined,
+  });
 }));
+
+// Step 2. body: { email, code } → creates the account and logs in.
+router.post('/register/verify', h(async (req, res) => {
+  const { email, code } = req.body || {};
+  if (!/^\d{6}$/.test(String(code || '').trim())) return res.status(400).json({ error: 'Enter the 6-digit code from your email' });
+  const { rows } = await query('SELECT * FROM fn_register_complete($1,$2,$3)', [email || '', hashCode(email || '', 'register', String(code).trim()), ipOf(req)]);
+  const r = rows[0];
+  const errors = {
+    ...OTP_ERRORS,
+    wrong: `Wrong code. ${r.attempts_left} attempt${r.attempts_left === 1 ? '' : 's'} left.`,
+    username_taken: 'Sorry, that username was just taken. Please start again with another one.',
+    email_taken: 'An account with this email already exists. Try logging in with an email code.',
+  };
+  if (r.status !== 'ok') return res.status(400).json({ error: errors[r.status] });
+  const { rows: u } = await query('SELECT * FROM users WHERE id = $1', [r.user_id]);
+  res.status(201).json({ token: signToken(u[0]), user: publicUser(u[0]) });
+}));
+
+// ---------- password login ----------
 
 // Password login with username or email.
 router.post('/login', h(async (req, res) => {

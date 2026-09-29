@@ -21,6 +21,7 @@ const PURPOSE = {
   login: { subject: 'Your All Services login code', line: 'Use this code to log in' },
   reset: { subject: 'Reset your All Services password', line: 'Use this code to reset your password' },
   verify_email: { subject: 'Confirm your email for All Services', line: 'Use this code to confirm your email address' },
+  register: { subject: 'Welcome to All Services — confirm your email', line: 'Welcome! Use this code to confirm your email and create your account' },
 };
 
 const escape = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);

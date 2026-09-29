@@ -126,7 +126,7 @@ Every **service** has one type of work (`services.skill_code`) and every **agent
 - **Customers and agents** can log in with **🔑 Password** (username *or* email) or **📧 Email code**: enter email → a 6-digit code is emailed → type it → logged in.
 - **Forgot password?** on the login page: email → code → new password.
 - **My account** (customers) and **Profile** (agent app): add / change email (confirmed with a code sent to the new address) and change password.
-- New customers must give an email when registering; agents give one when applying. Admins log in with password only.
+- **Sign-up verifies the email first**: details → 6-digit code to the email → the account is created only after the code is entered (`fn_register_start`, `fn_register_complete`). Taken usernames/emails are refused before any code is sent. Agents give an email when applying. Admins log in with password only.
 - Security: codes are random, stored only as a keyed SHA-256 hash, expire in 10 minutes, can be used once, lock after 5 wrong tries; one code per 30 s and max 5 per hour per email (20 per hour per IP); the API never reveals whether an email is registered; every login, failed attempt and password change is written to `auth_audit_log`.
 - Database: `auth_otps`, `auth_audit_log`, `fn_otp_request`, `fn_otp_check`, `sp_set_password`, `sp_auth_log`, `sp_auth_cleanup` in [`server/db/auth.sql`](server/db/auth.sql).
 

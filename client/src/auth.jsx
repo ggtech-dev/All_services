@@ -28,7 +28,12 @@ export function AuthProvider({ children }) {
         handleAuth(d);
         return d.user;
       }),
-    register: (form) => api('/auth/register', { method: 'POST', body: form }).then(handleAuth),
+    // Sign-up step 2: the code from the email creates the account and logs in.
+    completeRegistration: (email, code) =>
+      api('/auth/register/verify', { method: 'POST', body: { email, code } }).then((d) => {
+        handleAuth(d);
+        return d.user;
+      }),
     // Log in with the 6-digit code emailed to the user.
     loginWithCode: (email, code, portal = 'user') =>
       api('/auth/otp/login', { method: 'POST', body: { email, code, portal } }).then((d) => {
