@@ -252,13 +252,8 @@ export const localities = [
 // Types of work. Each service belongs to one type; each agent can do one or more.
 // [code, name, what the customer calls the agent, icon]
 export const serviceTypes = [
-  ['delivery', 'Delivery', 'Delivery partner', '🛵'],
-  ['plumbing', 'Plumbing', 'Plumber', '🔧'],
-  ['electrical', 'Electrical', 'Electrician', '⚡'],
-  ['appliance', 'Appliance repair', 'Technician', '❄️'],
-  ['cleaning', 'Cleaning & pest control', 'Cleaning expert', '🧹'],
-  ['carpentry', 'Carpentry', 'Carpenter', '🪚'],
-  ['painting', 'Painting', 'Painter', '🎨'],
+  ['delivery', 'Regular agents', 'Delivery partner', '🛵'],
+  ['home_service', 'Home services', 'Home service expert', '🏠'],
   ['beauty', 'Beauty & grooming', 'Beautician', '💇'],
   ['vehicle', 'Vehicle service', 'Mechanic', '🔩'],
   ['health', 'Health & care', 'Care professional', '🩺'],
@@ -270,22 +265,22 @@ export const serviceTypes = [
   ['general', 'General help', 'Helper', '🧰'],
 ];
 
-// Which type of agent does each seeded service. Anything not listed is 'delivery'.
+// Which type of agent does each seeded service. Anything not listed goes to regular agents ('delivery').
 export const serviceSkills = {
-  'Water-Tank Cleaning': 'cleaning',
-  'Water Filter / RO Service': 'appliance',
-  'Plumber on Demand': 'plumbing',
-  'Electrician on Demand': 'electrical',
-  'AC Service': 'appliance',
-  'Washing Machine Repair': 'appliance',
-  'Refrigerator Repair': 'appliance',
-  'TV / Electronics Repair': 'appliance',
-  Carpenter: 'carpentry',
-  Painter: 'painting',
-  'Home Cleaning': 'cleaning',
-  'Bathroom / Kitchen Deep Cleaning': 'cleaning',
-  'Pest Control': 'cleaning',
-  'Sofa / Carpet Cleaning': 'cleaning',
+  'Water-Tank Cleaning': 'home_service',
+  'Water Filter / RO Service': 'home_service',
+  'Plumber on Demand': 'home_service',
+  'Electrician on Demand': 'home_service',
+  'AC Service': 'home_service',
+  'Washing Machine Repair': 'home_service',
+  'Refrigerator Repair': 'home_service',
+  'TV / Electronics Repair': 'home_service',
+  Carpenter: 'home_service',
+  Painter: 'home_service',
+  'Home Cleaning': 'home_service',
+  'Bathroom / Kitchen Deep Cleaning': 'home_service',
+  'Pest Control': 'home_service',
+  'Sofa / Carpet Cleaning': 'home_service',
   'Lab Test Booking': 'health',
   'Blood Test Sample Collection': 'health',
   'Doctor Appointment Booking': 'health',

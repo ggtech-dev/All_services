@@ -103,7 +103,11 @@ Seed products are Telangana staples (Vijaya & Heritage dairy, Sona Masoori rice,
 
 ## Agent types (who gets which orders)
 
-Every **service** has one type of work (`services.skill_code`) and every **agent** has one or more (`agents.skills`), from the `service_types` table: Delivery, Plumbing, Electrical, Appliance repair, Cleaning, Carpentry, Painting, Beauty, Vehicle, Health, Tech repair, Tutoring, Pet care, Recycling, Moving, General.
+Every **service** has one type of work (`services.skill_code`) and every **agent** has one or more (`agents.skills`), from the `service_types` table:
+
+- **Regular agents** (`delivery`): all food & grocery, plus everyday delivery jobs (water cans, empty-can pickup, laundry, ironing).
+- **Home services** (`home_service`): plumbers, electricians, painters, carpenters, AC/appliance repair, cleaning, pest control, tank cleaning, RO service.
+- Other types: Beauty, Vehicle, Health & care, Mobile & laptop repair, Tutoring, Pet care, Scrap & recycling, Moving, General help.
 
 - An order gets the type of its service (`orders.skill_code`); product orders go to Delivery agents.
 - Agents only **see and can accept** orders of their types. Admin can only assign an order to an agent of the right type.

@@ -35,7 +35,8 @@ export default function ServiceTypes() {
               <tr><th>Type</th><th>Customer sees</th><th>Services</th><th>Agents</th><th>Free now</th><th>Orders waiting</th><th aria-label="Edit" /></tr>
             </thead>
             <tbody>
-              {list.data?.map((t) => (
+              {/* Retired types (turned off, nothing uses them) are hidden. */}
+              {list.data?.filter((t) => t.is_active || t.services || t.agents || t.orders_waiting).map((t) => (
                 <tr key={t.code} className={t.is_active ? '' : 'row-muted'}>
                   <td><span className="type-icon">{t.icon}</span> <b>{t.name}</b> <span className="muted small">{t.code}</span></td>
                   <td>“Your {t.agent_title.toLowerCase()}”</td>

@@ -98,6 +98,24 @@ try {
     }
   }
 
+  // One-time (2026-09-29): plumbing, electrical, appliance, cleaning, carpentry and painting were merged into
+  // one "Home services" type, and "Delivery" was renamed "Regular agents". Guarded so later admin edits stay.
+  const merged = await client.query("SELECT 1 FROM site_settings WHERE key = 'migrated_home_service'");
+  if (!merged.rowCount) {
+    const OLD = ['plumbing', 'electrical', 'appliance', 'cleaning', 'carpentry', 'painting'];
+    await client.query('UPDATE services SET skill_code = $1 WHERE skill_code = ANY ($2)', ['home_service', OLD]);
+    await client.query('UPDATE orders SET skill_code = $1 WHERE skill_code = ANY ($2) AND status = $3', ['home_service', OLD, 'placed']);
+    await client.query(
+      `UPDATE agents SET skills = ARRAY(SELECT DISTINCT CASE WHEN x = ANY ($1) THEN 'home_service' ELSE x END FROM unnest(skills) x ORDER BY 1)
+        WHERE skills && $1`,
+      [OLD]
+    );
+    await client.query('UPDATE service_types SET is_active = false WHERE code = ANY ($1)', [OLD]);
+    await client.query("UPDATE service_types SET name = 'Regular agents' WHERE code = 'delivery' AND name = 'Delivery'");
+    await client.query("INSERT INTO site_settings (key, value) VALUES ('migrated_home_service', '2026-09-29')");
+    console.log('Merged specialist home types into "Home services"; Delivery renamed to "Regular agents".');
+  }
+
   // Any other service without a type (e.g. added by the admin before types existed) becomes 'general'.
   await client.query("UPDATE services SET skill_code = 'general' WHERE skill_code IS NULL");
   // Old orders get the type of their first item's service.
