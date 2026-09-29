@@ -4,9 +4,11 @@ import { api } from '../api.js';
 import { ToastProvider } from '../admin/ui.jsx';
 import { StateBadge, usePoll } from '../orderStatus.jsx';
 import { useLiveLocation } from './useLiveLocation.js';
+import { useAuth } from '../auth.jsx';
 
 // Mobile-first shell for delivery agents: header with online state, bottom tab bar.
 export default function AgentLayout() {
+  const { logout } = useAuth();
   const [me, setMe] = useState(null);
   const [error, setError] = useState('');
 
@@ -32,7 +34,19 @@ export default function AgentLayout() {
               <StateBadge state={me.agent.state} />
             </div>
           </div>
-          <span className="agent-brand">🛵 All Services</span>
+          <button
+            className="agent-logout"
+            onClick={async () => {
+              if (me.agent.is_online) {
+                if (!confirm('You are online. Log out anyway? You will go offline and stop getting orders.')) return;
+                // Go offline first so the admin doesn't see a logged-out agent as "free".
+                await api('/agent/status', { method: 'PATCH', body: { online: false } }).catch(() => {});
+              }
+              logout();
+            }}
+          >
+            ⎋ Logout
+          </button>
         </header>
         <main className="agent-main">
           <Outlet context={{ me, reload, location }} />

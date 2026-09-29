@@ -130,3 +130,5 @@ html:has(.agent-app) { scroll-padding-bottom: 90px; }
 
 /* Messages sit above the bottom tab bar and never block taps on buttons underneath. */
 .agent-app + .toasts { bottom: 84px; left: 12px; right: 12px; align-items: stretch; }
+.agent-logout { background: rgba(255, 255, 255, .1); color: #e2e8f0; border: 1px solid rgba(255, 255, 255, .2); border-radius: 10px; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.agent-logout:hover { background: rgba(255, 255, 255, .2); color: #fff; }
