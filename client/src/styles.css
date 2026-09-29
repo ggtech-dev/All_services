@@ -345,3 +345,57 @@ input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 2
 .unverified { color: #b45309; font-size: 13px; font-weight: 600; background: #fef3c7; padding: 2px 8px; border-radius: 999px; }
 .ok-msg { background: #dcfce7; color: #166534; padding: 10px 14px; border-radius: 10px; font-size: 14px; }
 @media (max-width: 800px) { .account-grid { grid-template-columns: 1fr; } }
+
+/* ---------- promotions (home page ads) ---------- */
+.promotions { display: flex; flex-direction: column; gap: 16px; margin: -8px 0 28px; }
+.promo {
+  position: relative; display: flex; align-items: stretch; overflow: hidden; border-radius: 18px;
+  background: linear-gradient(120deg, var(--promo-bg), color-mix(in srgb, var(--promo-bg) 70%, #000));
+  color: var(--promo-fg); min-height: 100%;
+}
+.promo-clickable { cursor: pointer; }
+.promo-clickable:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.promo-text { flex: 1; padding: 26px 28px; display: flex; flex-direction: column; justify-content: center; gap: 8px; z-index: 1; min-width: 0; }
+.promo-text h3 { font-size: clamp(18px, 2.6vw, 28px); line-height: 1.2; }
+.promo-text p { margin: 0; opacity: .92; font-size: clamp(13px, 1.4vw, 16px); line-height: 1.5; }
+.promo-cta { align-self: flex-start; margin-top: 6px; background: var(--promo-fg); color: var(--promo-bg); font-weight: 700; font-size: 14px; padding: 8px 16px; border-radius: 999px; }
+.promo-img { width: 42%; flex-shrink: 0; position: relative; }
+.promo-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* fade the photo into the colour so text and image blend */
+.promo-img::before { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, var(--promo-bg) 0%, transparent 35%); }
+.promo-text-only .promo-text { padding: 30px 32px; }
+.promo-image-only .promo-img { width: 100%; }
+.promo-image-only .promo-img::before { display: none; }
+
+.carousel { position: relative; overflow: hidden; border-radius: 18px; box-shadow: var(--shadow); }
+.carousel-track { display: flex; transition: transform .5s ease; }
+.carousel-slide { flex: 0 0 100%; height: 220px; }
+.carousel-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border-radius: 50%; border: 0;
+  background: rgba(255, 255, 255, .85); color: #0f172a; font-size: 24px; line-height: 1; cursor: pointer; z-index: 2;
+  opacity: 0; transition: opacity .2s; box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+}
+.carousel:hover .carousel-arrow { opacity: 1; }
+.carousel-arrow.prev { left: 12px; }
+.carousel-arrow.next { right: 12px; }
+.carousel-dots { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 2; }
+.carousel-dots button { width: 8px; height: 8px; border-radius: 999px; border: 0; background: rgba(255, 255, 255, .55); cursor: pointer; padding: 0; transition: width .2s; }
+.carousel-dots button.active { width: 22px; background: #fff; }
+
+.promo-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.promo-tile { height: 130px; box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s; }
+.promo-tile.promo-clickable:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+.promo-tile .promo-text { padding: 16px 18px; gap: 4px; }
+.promo-tile .promo-text h3 { font-size: 17px; }
+.promo-tile .promo-text p { font-size: 13px; }
+.promo-tile .promo-cta { font-size: 12px; padding: 5px 12px; margin-top: 4px; }
+.promo-tile .promo-img { width: 38%; }
+
+@media (max-width: 640px) {
+  .carousel-slide { height: 190px; }
+  .promo-text { padding: 18px 18px 30px; }
+  .promo-img { width: 36%; }
+  .carousel-arrow { display: none; }
+  .promo-tiles { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 78%; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+  .promo-tile { scroll-snap-align: start; }
+}

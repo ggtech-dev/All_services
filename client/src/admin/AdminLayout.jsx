@@ -12,6 +12,7 @@ const NAV = [
   { to: '/admin/live', label: 'Live map', icon: '📍' },
   { to: '/admin/service-types', label: 'Agent types', icon: '🧩' },
   { to: '/admin/services', label: 'Services', icon: '🧰' },
+  { to: '/admin/promotions', label: 'Promotions', icon: '📢' },
   { to: '/admin/products', label: 'Products', icon: '🛍️' },
   { to: '/admin/categories', label: 'Categories', icon: '🗂️' },
   { to: '/admin/pricing', label: 'Prices & items', icon: '₹' },

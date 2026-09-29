@@ -4,6 +4,7 @@ import path from 'node:path';
 import { unlink } from 'node:fs/promises';
 import crypto from 'node:crypto';
 import { query, asActor } from '../db.js';
+import { HREF_SQL } from './promotions.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 export const UPLOAD_DIR = path.resolve(import.meta.dirname, '../../uploads');
@@ -44,7 +45,8 @@ async function removeUnusedUploads(urls) {
     const { rows } = await query(
       `SELECT 1 FROM categories WHERE image_url = $1 UNION ALL
        SELECT 1 FROM services   WHERE image_url = $1 UNION ALL
-       SELECT 1 FROM products   WHERE image_url = $1 LIMIT 1`,
+       SELECT 1 FROM products   WHERE image_url = $1 UNION ALL
+       SELECT 1 FROM promotions WHERE image_url = $1 LIMIT 1`,
       [url]
     );
     if (!rows.length) await unlink(path.join(UPLOAD_DIR, path.basename(url))).catch(() => {});
@@ -263,6 +265,46 @@ router.get('/prices/history', h(async (req, res) => {
      ) x ORDER BY changed_at DESC LIMIT 150`
   );
   res.json(rows);
+}));
+
+// ---------- promotions (home page ads) ----------
+router.get('/promotions', h(async (req, res) => {
+  const { rows } = await query(
+    `SELECT p.*, fn_promotion_state(p) AS state, ${HREF_SQL} AS href,
+            CASE WHEN p.views > 0 THEN round(p.clicks * 100.0 / p.views, 1) END AS ctr
+       FROM promotions p ORDER BY p.placement, p.sort_order, p.id`
+  );
+  res.json(rows);
+}));
+
+const savePromotion = (id) => h(async (req, res) => {
+  const b = req.body || {};
+  const row = await asActor(req.user.id, async (db) =>
+    (await db.query('SELECT * FROM fn_save_promotion($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)', [
+      id === null ? null : req.params.id, b.name, b.title, b.subtitle, b.image_url, b.image_credit, b.cta_text,
+      b.link_type, b.link_value, b.placement, b.bg_color || null, b.text_color || null,
+      b.starts_at || null, b.ends_at || null, bool(b.is_active),
+    ])).rows[0]
+  );
+  res.status(id === null ? 201 : 200).json(row);
+});
+router.post('/promotions', savePromotion(null));
+router.put('/promotions/:id', cleansOldImages('promotions'), savePromotion());
+
+router.patch('/promotions/:id/active', h(async (req, res) => {
+  await asActor(req.user.id, (db) => db.query('CALL sp_set_promotion_active($1,$2)', [req.params.id, Boolean(req.body?.is_active)]));
+  res.status(204).end();
+}));
+
+// body: { direction: -1 | 1 }
+router.post('/promotions/:id/move', h(async (req, res) => {
+  await asActor(req.user.id, (db) => db.query('CALL sp_move_promotion($1,$2)', [req.params.id, Number(req.body?.direction) < 0 ? -1 : 1]));
+  res.status(204).end();
+}));
+
+router.delete('/promotions/:id', cleansOldImages('promotions'), h(async (req, res) => {
+  await asActor(req.user.id, (db) => db.query('CALL sp_delete_promotion($1)', [req.params.id]));
+  res.status(204).end();
 }));
 
 // ---------- site settings ----------

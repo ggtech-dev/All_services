@@ -115,6 +115,12 @@ Every **service** has one type of work (`services.skill_code`) and every **agent
 - Change a service's type in **Services** (dropdown in the row); change an agent's types in **Manage agents** → agent → *Types of work*. New applicants choose their types on the apply page.
 - Customers see the right word: “Your plumber”, “Your electrician”, “Your delivery partner”.
 
+## Promotions (home page ads)
+
+- Customers see a **big sliding banner** (auto-slides every 5 s, arrows, dots, swipe on phones) and a row of **small offer tiles** below the welcome banner.
+- Admin → **📢 Promotions**: add / edit / delete, image (upload or URL), title and description (optional), button text, link to a category, a service/shop or a website, colours, big banner or tile, start/end date (festival offers), on/off switch, ▲▼ order, live preview, and views / clicks / click-rate per promotion.
+- Database: `promotions` table and `fn_save_promotion`, `fn_promotion_state`, `sp_move_promotion`, `sp_set_promotion_active`, `sp_delete_promotion`, `sp_promotion_views`, `sp_promotion_click` in [`server/db/promotions.sql`](server/db/promotions.sql). Links are validated (existing category/service, https only).
+
 ## Email login codes & forgot password (free)
 
 - **Customers and agents** can log in with **🔑 Password** (username *or* email) or **📧 Email code**: enter email → a 6-digit code is emailed → type it → logged in.

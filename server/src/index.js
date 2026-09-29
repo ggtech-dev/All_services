@@ -7,6 +7,7 @@ import catalogRoutes from './routes/catalog.js';
 import adminRoutes, { UPLOAD_DIR } from './routes/admin.js';
 import adminOpsRoutes from './routes/adminOps.js';
 import orderRoutes from './routes/orders.js';
+import promotionRoutes from './routes/promotions.js';
 import agentRoutes, { applyRouter } from './routes/agent.js';
 
 if (!process.env.JWT_SECRET) {
@@ -32,6 +33,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin', adminOpsRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/promotions', promotionRoutes);
 app.use('/api/agents', applyRouter);
 app.use('/api/agent', agentRoutes);
 app.use('/api', catalogRoutes);

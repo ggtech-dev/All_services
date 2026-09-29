@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { timeAgo, useLoad } from './ui.jsx';
 
-const ENTITY = { services: 'service', products: 'product', categories: 'category', site_settings: 'site settings' };
+const ENTITY = { promotions: 'promotion', services: 'service', products: 'product', categories: 'category', site_settings: 'site settings' };
 const FIELD = {
   base_price: 'price', price_unit: 'price unit', is_active: 'visibility', image_url: 'image',
   eta_minutes: 'time', skill_code: 'agent type', price: 'price', mrp: 'MRP', in_stock: 'stock', brand: 'brand', unit: 'pack size', service_id: 'service', requires_license: 'licence flag', category_id: 'category', name: 'name',

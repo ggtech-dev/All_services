@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import SmartImage from '../components/SmartImage.jsx';
+import Promotions from '../components/Promotions.jsx';
 
 export default function Home() {
   const [categories, setCategories] = useState([]);
@@ -32,6 +33,8 @@ export default function Home() {
           {settings.support_phone && <a href={`tel:${settings.support_phone.replace(/\s/g, '')}`}>📞 {settings.support_phone}</a>}
         </div>
       </section>
+
+      <Promotions />
 
       {error && <div className="alert">{error}</div>}
       {loading ? (

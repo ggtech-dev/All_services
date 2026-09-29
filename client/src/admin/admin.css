@@ -341,3 +341,52 @@ a.stat-tile:hover { transform: translateY(-2px); }
   .live-side { max-height: none; }
 }
 .toasts { pointer-events: none; }
+
+/* ---------- promotions admin ---------- */
+.promo-section-title { font-size: 16px; }
+.promo-admin { display: grid; grid-template-columns: 300px 1fr auto; gap: 18px; align-items: center; padding: 14px; }
+.promo-admin-preview { height: 120px; border-radius: 14px; overflow: hidden; pointer-events: none; }
+.promo-admin-preview.tile { height: 110px; }
+.promo-admin-preview.big { height: 200px; }
+.promo-admin-preview.big.tile { height: 130px; max-width: 360px; }
+.promo-admin-preview .promo { height: 100%; }
+.promo-admin-preview .promo-text { padding: 14px 16px; }
+.promo-admin-preview .promo-text h3 { font-size: 16px; }
+.promo-admin-preview .promo-text p { font-size: 12px; }
+.promo-admin-preview.big .promo-text h3 { font-size: 22px; }
+.promo-admin-preview.big .promo-text p { font-size: 14px; }
+.promo-admin-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.promo-admin-head { display: flex; gap: 10px; align-items: center; }
+.promo-stats { display: flex; gap: 14px; font-size: 13px; margin-top: 4px; flex-wrap: wrap; }
+.promo-admin-actions { display: flex; gap: 8px; align-items: center; }
+.move-btns { display: flex; flex-direction: column; }
+.move-btns .icon-btn { font-size: 11px; padding: 2px 8px; }
+.move-btns .icon-btn:disabled { opacity: .3; cursor: default; }
+.row-muted-soft { opacity: .75; }
+.promo-preview-box { display: flex; flex-direction: column; gap: 6px; background: #f8fafc; padding: 12px; border-radius: 14px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.swatches button { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--border); cursor: pointer; padding: 0; }
+.swatches button.active { box-shadow: 0 0 0 2px var(--primary); }
+@media (max-width: 1000px) {
+  .promo-admin { grid-template-columns: 1fr; }
+  .promo-admin-actions { justify-content: flex-end; }
+}
+
+/* List previews: render the real banner at full size, then shrink it, so text wraps exactly like on the site. */
+.promo-admin-preview:not(.big) { width: 300px; position: relative; }
+.promo-admin-preview:not(.big) .promo { position: absolute; top: 0; left: 0; transform-origin: top left; }
+.promo-admin-preview.carousel:not(.big) { height: 110px; }
+.promo-admin-preview.carousel:not(.big) .promo { width: 600px; height: 220px; transform: scale(.5); }
+.promo-admin-preview.tile:not(.big) { height: 108px; }
+.promo-admin-preview.tile:not(.big) .promo { width: 360px; height: 130px; transform: scale(.8333); }
+/* undo the small-text overrides for list previews (they are scaled instead) */
+.promo-admin-preview:not(.big) .promo-text { padding: 26px 28px; }
+.promo-admin-preview.tile:not(.big) .promo-text { padding: 16px 18px; }
+.promo-admin-preview.carousel:not(.big) .promo-text h3 { font-size: 26px; }
+.promo-admin-preview.carousel:not(.big) .promo-text p { font-size: 15px; }
+.promo-admin-preview.tile:not(.big) .promo-text h3 { font-size: 17px; }
+.promo-admin-preview.tile:not(.big) .promo-text p { font-size: 13px; }
+/* editor preview: real size */
+.promo-admin-preview.big.carousel { height: 220px; }
+.promo-admin-preview.big .promo-text { padding: 26px 28px; }
+.promo-admin-preview.big.tile .promo-text { padding: 16px 18px; }

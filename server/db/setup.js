@@ -38,6 +38,7 @@ try {
   await client.query(await sql('./functions.sql'));
   await client.query(await sql('./orders.sql'));
   await client.query(await sql('./auth.sql'));
+  await client.query(await sql('./promotions.sql'));
 
   await client.query('BEGIN');
 
@@ -130,6 +131,30 @@ try {
   );
   await client.query("ALTER TABLE services ALTER COLUMN skill_code SET DEFAULT 'general', ALTER COLUMN skill_code SET NOT NULL");
   await client.query("ALTER TABLE orders ALTER COLUMN skill_code SET DEFAULT 'delivery', ALTER COLUMN skill_code SET NOT NULL");
+
+  // Sample promotions, added once (if the admin deletes them they stay deleted). Images reuse the service photos.
+  const promosSeeded = await client.query("SELECT 1 FROM site_settings WHERE key = 'seeded_promotions'");
+  if (!promosSeeded.rowCount) {
+    const samples = [
+      // [name, title, subtitle, cta, link_type, link_value, placement, bg, image from service slug]
+      ['Free delivery launch offer', 'Free delivery on your first 3 orders 🎉', 'Milk, vegetables, kirana & more — delivered in about 30 minutes across Hyderabad', 'Shop now', 'category', 'food-daily', 'carousel', '#16a34a', 'food-daily-vegetable-delivery'],
+      ['Plumber in 60 minutes', 'Plumber at your door in 60 minutes', 'Leaking tap? Blocked drain? Verified home service experts near you', 'Book a plumber', 'service', 'home-services-plumber-on-demand', 'carousel', '#1d4ed8', 'home-services-plumber-on-demand'],
+      ['Morning milk', 'Fresh Vijaya milk every morning 🥛', 'Toned milk ₹28 · curd · ghee · paneer', 'Order milk', 'service', 'food-daily-milk-delivery', 'carousel', '#b45309', 'food-daily-milk-delivery'],
+      ['AC service tile', 'AC service', 'Beat the heat — from ₹499', 'Book', 'service', 'home-services-ac-service', 'tile', '#0e7490', 'home-services-ac-service'],
+      ['Scrap pickup tile', 'Sell your scrap', 'We pay you for paper, plastic & metal', 'Schedule pickup', 'category', 'recycling', 'tile', '#15803d', 'recycling-scrap-collection'],
+      ['Car wash tile', 'Car wash at home', 'Shiny car without leaving home', 'Book', 'service', 'vehicle-car-wash-at-home', 'tile', '#7c3aed', 'vehicle-car-wash-at-home'],
+    ];
+    for (const [i, [name, title, subtitle, cta, type, value, placement, bg, imgSlug]] of samples.entries()) {
+      await client.query(
+        `INSERT INTO promotions (name, title, subtitle, cta_text, link_type, link_value, placement, bg_color, sort_order, image_url, image_credit)
+         SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, s.image_url, s.image_credit FROM (SELECT 1) x
+           LEFT JOIN services s ON s.slug = $10`,
+        [name, title, subtitle, cta, type, value, placement, bg, i, imgSlug]
+      );
+    }
+    await client.query("INSERT INTO site_settings (key, value) VALUES ('seeded_promotions', '2026-09-29')");
+    console.log(`Added ${samples.length} sample promotions.`);
+  }
 
   // Order numbers start at #1001.
   await client.query(`SELECT setval('orders_id_seq', 1000) WHERE NOT EXISTS (SELECT 1 FROM orders)`);
