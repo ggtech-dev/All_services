@@ -70,7 +70,7 @@ export function AgentForm({ docsRequired = true, submitLabel, onSubmit }) {
           <label>Mobile number *<input value={form.phone} onChange={set('phone')} required inputMode="tel" placeholder="10-digit mobile" /></label>
         </div>
         <div className="form-row">
-          <label>Email<input type="email" value={form.email} onChange={set('email')} placeholder="you@example.com" /></label>
+          <label>Email {docsRequired && '*'}<input type="email" value={form.email} onChange={set('email')} placeholder="you@example.com — for login codes" required={docsRequired} /></label>
           <label>
             Area you'll work in
             <select value={form.locality_id} onChange={set('locality_id')}>

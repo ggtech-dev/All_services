@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
 import AuthLayout from './AuthLayout.jsx';
+import EmailCode from '../components/EmailCode.jsx';
 
 const PORTALS = {
   user: { label: 'User', icon: '👤', title: 'Welcome back 👋', subtitle: 'Log in to book your next service', button: 'Login' },
@@ -12,11 +13,13 @@ const HOME = { user: '/', agent: '/agent', admin: '/admin' };
 const homeFor = (role) => (role === 'admin' ? '/admin' : role === 'agent' ? '/agent' : '/');
 
 export default function Login() {
-  const { user, login } = useAuth();
+  const { user, login, loginWithCode } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [params, setParams] = useSearchParams();
   const portal = PORTALS[params.get('as')] ? params.get('as') : 'user';
+  // Customers and agents can log in with a code sent to their email; admins always use a password.
+  const method = portal !== 'admin' && params.get('method') === 'code' ? 'code' : 'password';
   const [form, setForm] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -25,10 +28,11 @@ export default function Login() {
   if (user) return <Navigate to={homeFor(user.role)} replace />;
 
   const p = PORTALS[portal];
-  const choose = (next) => {
+  const go = (next) => {
     setError('');
-    setParams(next === 'user' ? {} : { as: next }, { replace: true });
+    setParams({ ...(next.portal !== 'user' && { as: next.portal }), ...(next.method === 'code' && { method: 'code' }) }, { replace: true });
   };
+  const done = () => navigate(portal === 'user' ? location.state?.from || '/' : HOME[portal], { replace: true });
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -36,7 +40,7 @@ export default function Login() {
     setBusy(true);
     try {
       await login(form.username.trim(), form.password, portal);
-      navigate(portal === 'user' ? location.state?.from || '/' : HOME[portal], { replace: true });
+      done();
     } catch (err) {
       setError(err.message);
       setBusy(false);
@@ -47,51 +51,69 @@ export default function Login() {
     <AuthLayout title={p.title} subtitle={p.subtitle}>
       <div className="portal-switch" role="tablist" aria-label="Login as">
         {Object.entries(PORTALS).map(([key, v]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={portal === key}
-            className={portal === key ? 'active' : ''}
-            onClick={() => choose(key)}
-          >
+          <button key={key} type="button" role="tab" aria-selected={portal === key} className={portal === key ? 'active' : ''} onClick={() => go({ portal: key, method })}>
             <span>{v.icon}</span> {v.label}
           </button>
         ))}
       </div>
-      <form onSubmit={onSubmit} className="form">
-        <label>
-          Username
-          <input
-            autoFocus
-            autoComplete="username"
-            value={form.username}
-            onChange={(e) => setForm({ ...form, username: e.target.value })}
-            placeholder={portal === 'user' ? 'Enter your username' : `${PORTALS[portal].label} username`}
-            required
-          />
-        </label>
-        <label>
-          Password
-          <div className="password-field">
+
+      {portal !== 'admin' && (
+        <div className="method-switch" role="tablist" aria-label="Login method">
+          <button type="button" role="tab" aria-selected={method === 'password'} className={method === 'password' ? 'active' : ''} onClick={() => go({ portal, method: 'password' })}>🔑 Password</button>
+          <button type="button" role="tab" aria-selected={method === 'code'} className={method === 'code' ? 'active' : ''} onClick={() => go({ portal, method: 'code' })}>📧 Email code</button>
+        </div>
+      )}
+
+      {method === 'code' ? (
+        <EmailCode
+          key={portal}
+          requestPath="/auth/otp/request"
+          extra={{ portal }}
+          submitLabel={p.button}
+          onCode={async (email, code) => {
+            await loginWithCode(email, code, portal);
+            done();
+          }}
+        />
+      ) : (
+        <form onSubmit={onSubmit} className="form">
+          <label>
+            Username or email
             <input
-              type={showPassword ? 'text' : 'password'}
-              autoComplete="current-password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="Enter your password"
+              autoFocus
+              autoComplete="username"
+              value={form.username}
+              onChange={(e) => setForm({ ...form, username: e.target.value })}
+              placeholder={portal === 'admin' ? 'Admin username' : 'Username or email'}
               required
             />
-            <button type="button" className="link-btn" onClick={() => setShowPassword((s) => !s)}>
-              {showPassword ? 'Hide' : 'Show'}
-            </button>
-          </div>
-        </label>
-        {error && <div className="alert">{error}</div>}
-        <button className={`btn btn-primary ${portal === 'admin' ? 'btn-dark' : portal === 'agent' ? 'btn-agent' : ''}`} disabled={busy}>
-          {busy ? 'Logging in…' : p.button}
-        </button>
-      </form>
+          </label>
+          <label>
+            <span className="label-row">
+              Password
+              {portal !== 'admin' && <Link className="link-small" to={`/forgot-password${portal === 'agent' ? '?as=agent' : ''}`}>Forgot password?</Link>}
+            </span>
+            <div className="password-field">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder="Enter your password"
+                required
+              />
+              <button type="button" className="link-btn" onClick={() => setShowPassword((s) => !s)}>
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
+          </label>
+          {error && <div className="alert">{error}</div>}
+          <button className={`btn btn-primary ${portal === 'admin' ? 'btn-dark' : portal === 'agent' ? 'btn-agent' : ''}`} disabled={busy}>
+            {busy ? 'Logging in…' : p.button}
+          </button>
+        </form>
+      )}
+
       {portal === 'user' && <p className="switch">New here? <Link to="/register">Create an account</Link></p>}
       {portal === 'agent' && <p className="switch">Want to work with us? <Link to="/agent/apply">Apply as an agent</Link></p>}
       {portal === 'admin' && <p className="switch">Admin accounts are created by the system owner.</p>}

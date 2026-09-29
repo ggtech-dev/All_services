@@ -19,6 +19,7 @@ export default function Navbar() {
           </span>
           {user.role === 'admin' && <Link to="/admin" className="btn btn-ghost">🛡️ <span className="hide-sm">Admin panel</span></Link>}
           <NavLink to="/orders" className="btn btn-ghost">📦 <span className="hide-sm">My orders</span></NavLink>
+          <NavLink to="/account" className="btn btn-ghost" title="My account">👤 <span className="hide-sm">Account</span></NavLink>
           <NavLink to="/checkout" className="btn btn-ghost cart-link" aria-label={`Cart, ${cart.count} items`}>
             🛒 <span className="hide-sm">Cart</span>
             {cart.count > 0 && <span className="cart-count">{cart.count}</span>}

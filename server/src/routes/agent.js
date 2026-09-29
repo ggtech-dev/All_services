@@ -60,7 +60,10 @@ export async function createAgent(req, status) {
     );
   } catch (err) {
     await removeFiles(req.files); // don't keep documents of a failed application
-    if (err.code === '23505') throw Object.assign(new Error('That username is already taken'), { status: 409 });
+    if (err.code === '23505') {
+      const msg = err.constraint === 'users_email_unique' ? 'An account with this email already exists' : 'That username is already taken';
+      throw Object.assign(new Error(msg), { status: 409 });
+    }
     throw err;
   }
 }

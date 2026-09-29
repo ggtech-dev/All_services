@@ -37,6 +37,7 @@ try {
   await client.query(await sql('./schema.sql'));
   await client.query(await sql('./functions.sql'));
   await client.query(await sql('./orders.sql'));
+  await client.query(await sql('./auth.sql'));
 
   await client.query('BEGIN');
 

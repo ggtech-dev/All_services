@@ -326,3 +326,22 @@ input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 2
 .gps-status { font-size: 13px; padding: 8px 12px; border-radius: 10px; background: #f1f5f9; color: var(--muted); }
 .gps-on { background: #f0fdf4; color: #15803d; font-weight: 600; }
 .gps-off { background: #fef2f2; color: #b91c1c; }
+
+/* ---------- email code login / account ---------- */
+.method-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 12px; border-bottom: 2px solid var(--border); }
+.method-switch button { border: 0; background: none; font: inherit; font-size: 14px; font-weight: 600; padding: 8px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.method-switch button.active { color: var(--primary); border-bottom-color: var(--primary); }
+.label-row { display: flex; justify-content: space-between; align-items: baseline; }
+.link-small { font-size: 13px; font-weight: 600; color: var(--primary); }
+.code-sent { font-size: 14px; margin: 0; line-height: 1.6; }
+.code-input { font-size: 26px !important; letter-spacing: .5em; text-align: center; font-weight: 700; }
+.test-code { background: #fef9c3; border: 1px dashed #ca8a04; color: #854d0e; border-radius: 10px; padding: 8px 12px; font-size: 14px; }
+.resend { align-self: center; }
+.resend:disabled { color: var(--muted); cursor: default; }
+.account-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.account-grid h3 { font-size: 16px; margin-bottom: 4px; }
+.email-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.verified { color: #15803d; font-size: 13px; font-weight: 600; background: #dcfce7; padding: 2px 8px; border-radius: 999px; }
+.unverified { color: #b45309; font-size: 13px; font-weight: 600; background: #fef3c7; padding: 2px 8px; border-radius: 999px; }
+.ok-msg { background: #dcfce7; color: #166534; padding: 10px 14px; border-radius: 10px; font-size: 14px; }
+@media (max-width: 800px) { .account-grid { grid-template-columns: 1fr; } }

@@ -9,6 +9,8 @@ import Category from './pages/Category.jsx';
 import ServiceShop from './pages/ServiceShop.jsx';
 import Checkout from './pages/Checkout.jsx';
 import MyOrders from './pages/MyOrders.jsx';
+import Account from './pages/Account.jsx';
+import ForgotPassword from './pages/ForgotPassword.jsx';
 import OrderTrack from './pages/OrderTrack.jsx';
 // Admin panel, agent app and the agent application page are loaded on demand.
 const AgentApply = lazy(() => import('./pages/AgentApply.jsx'));
@@ -62,6 +64,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/agent/apply" element={<AgentApply />} />
 
       <Route path="/" element={<Protected><Home /></Protected>} />
@@ -69,6 +72,7 @@ export default function App() {
       <Route path="/service/:slug" element={<Protected><ServiceShop /></Protected>} />
       <Route path="/checkout" element={<Protected><Checkout /></Protected>} />
       <Route path="/orders" element={<Protected><MyOrders /></Protected>} />
+      <Route path="/account" element={<Protected><Account /></Protected>} />
       <Route path="/orders/:id" element={<Protected><OrderTrack /></Protected>} />
 
       <Route path="/agent" element={<RoleOnly role="agent"><AgentLayout /></RoleOnly>}>

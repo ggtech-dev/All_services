@@ -29,6 +29,14 @@ export function AuthProvider({ children }) {
         return d.user;
       }),
     register: (form) => api('/auth/register', { method: 'POST', body: form }).then(handleAuth),
+    // Log in with the 6-digit code emailed to the user.
+    loginWithCode: (email, code, portal = 'user') =>
+      api('/auth/otp/login', { method: 'POST', body: { email, code, portal } }).then((d) => {
+        handleAuth(d);
+        return d.user;
+      }),
+    // After profile changes (e.g. email verified), refresh the stored user.
+    setUser,
     logout: () => {
       setToken(null);
       setUser(null);

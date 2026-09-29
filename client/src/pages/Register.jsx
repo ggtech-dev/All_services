@@ -6,7 +6,7 @@ import AuthLayout from './AuthLayout.jsx';
 export default function Register() {
   const { user, register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ fullName: '', phone: '', username: '', password: '', confirm: '' });
+  const [form, setForm] = useState({ fullName: '', phone: '', email: '', username: '', password: '', confirm: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -21,7 +21,7 @@ export default function Register() {
     setBusy(true);
     try {
       const { confirm, ...payload } = form;
-      await register({ ...payload, username: payload.username.trim() });
+      await register({ ...payload, username: payload.username.trim(), email: payload.email.trim() });
       navigate('/', { replace: true });
     } catch (err) {
       setError(err.message);
@@ -37,6 +37,7 @@ export default function Register() {
           <label>Full name<input value={form.fullName} onChange={set('fullName')} placeholder="Your name" /></label>
           <label>Phone<input value={form.phone} onChange={set('phone')} placeholder="10-digit mobile" inputMode="tel" /></label>
         </div>
+        <label>Email<input type="email" value={form.email} onChange={set('email')} autoComplete="email" placeholder="you@example.com — for login codes & password reset" required /></label>
         <label>Username<input value={form.username} onChange={set('username')} autoComplete="username" placeholder="Choose a username" required /></label>
         <div className="form-row">
           <label>Password<input type="password" value={form.password} onChange={set('password')} autoComplete="new-password" placeholder="Min 6 characters" required /></label>

@@ -115,6 +115,27 @@ Every **service** has one type of work (`services.skill_code`) and every **agent
 - Change a service's type in **Services** (dropdown in the row); change an agent's types in **Manage agents** → agent → *Types of work*. New applicants choose their types on the apply page.
 - Customers see the right word: “Your plumber”, “Your electrician”, “Your delivery partner”.
 
+## Email login codes & forgot password (free)
+
+- **Customers and agents** can log in with **🔑 Password** (username *or* email) or **📧 Email code**: enter email → a 6-digit code is emailed → type it → logged in.
+- **Forgot password?** on the login page: email → code → new password.
+- **My account** (customers) and **Profile** (agent app): add / change email (confirmed with a code sent to the new address) and change password.
+- New customers must give an email when registering; agents give one when applying. Admins log in with password only.
+- Security: codes are random, stored only as a keyed SHA-256 hash, expire in 10 minutes, can be used once, lock after 5 wrong tries; one code per 30 s and max 5 per hour per email (20 per hour per IP); the API never reveals whether an email is registered; every login, failed attempt and password change is written to `auth_audit_log`.
+- Database: `auth_otps`, `auth_audit_log`, `fn_otp_request`, `fn_otp_check`, `sp_set_password`, `sp_auth_log`, `sp_auth_cleanup` in [`server/db/auth.sql`](server/db/auth.sql).
+
+### Sending real emails
+
+Until SMTP is configured the app runs in **test mode**: codes are printed in the server terminal and shown in a yellow box on the screen. To send real emails, fill these in `server/.env` and restart the server:
+
+```
+SMTP_HOST=smtp-relay.brevo.com   # Brevo free plan (~300 emails/day) — or smtp.gmail.com with a Gmail App Password
+SMTP_PORT=587
+SMTP_USER=your-login
+SMTP_PASS=your-smtp-key
+MAIL_FROM=All Services <no-reply@yourdomain.in>
+```
+
 ## Live GPS tracking (free)
 
 - **Agent app**: while an agent is online, the phone's GPS (browser Geolocation API) is sent to the server every ~10 s, with a "📍 Live location on" indicator. The agent must allow location access and keep the app open (browsers pause GPS in the background).

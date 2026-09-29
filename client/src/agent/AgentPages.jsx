@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { StatusBadge, VEHICLES, rupees, when } from '../orderStatus.jsx';
+import AccountSecurity from '../components/AccountSecurity.jsx';
 
 // ---------- delivery history ----------
 export function AgentOrders() {
@@ -141,7 +142,8 @@ export function AgentProfile() {
           <dt>Pay per delivery</dt><dd>{rupees(me.stats.pay_per_order)}</dd>
         </dl>
       </section>
-      <p className="muted small center">To change your details or documents, please contact the admin.</p>
+      <AccountSecurity />
+      <p className="muted small center">To change your name, phone, vehicle or documents, please contact the admin.</p>
       <button className="btn btn-ghost btn-block" onClick={logout}>⎋ Logout</button>
     </div>
   );
