@@ -11,8 +11,24 @@ export const AGENT_DOCS = [
   { field: 'photo_doc', label: 'Your photo', hint: 'Optional, clear face photo', optional: true },
 ];
 
+// Chip picker for the types of work an agent does. Used by the application form and the admin agent page.
+export function SkillPicker({ types, value, onChange }) {
+  const toggle = (code) => onChange(value.includes(code) ? value.filter((c) => c !== code) : [...value, code]);
+  return (
+    <div className="skill-picker">
+      {types.map((t) => (
+        <button type="button" key={t.code} className={value.includes(t.code) ? 'active' : ''} onClick={() => toggle(t.code)} aria-pressed={value.includes(t.code)}>
+          <span>{t.icon}</span> {t.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function AgentForm({ docsRequired = true, submitLabel, onSubmit }) {
   const [localities, setLocalities] = useState([]);
+  const [types, setTypes] = useState([]);
+  const [skills, setSkills] = useState(['delivery']);
   const [form, setForm] = useState({
     full_name: '', phone: '', email: '', username: '', password: '', vehicle_type: 'bike', vehicle_number: '',
     locality_id: '', aadhaar_number: '', pan_number: '', dl_number: '',
@@ -23,6 +39,7 @@ export function AgentForm({ docsRequired = true, submitLabel, onSubmit }) {
 
   useEffect(() => {
     api('/localities').then(setLocalities).catch(() => {});
+    api('/service-types').then(setTypes).catch(() => {});
   }, []);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -30,7 +47,9 @@ export function AgentForm({ docsRequired = true, submitLabel, onSubmit }) {
   const submit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!skills.length) return setError('Choose at least one type of work');
     const fd = new FormData();
+    skills.forEach((s) => fd.append('skills', s));
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
     Object.entries(files).forEach(([k, f]) => f && fd.append(k, f));
     setBusy(true);
@@ -63,7 +82,13 @@ export function AgentForm({ docsRequired = true, submitLabel, onSubmit }) {
       </fieldset>
 
       <fieldset>
-        <legend>2. Vehicle</legend>
+        <legend>2. What work will you do? *</legend>
+        <small className="muted">You will only get orders for the types you choose. Pick all that apply.</small>
+        <SkillPicker types={types} value={skills} onChange={setSkills} />
+      </fieldset>
+
+      <fieldset>
+        <legend>3. Vehicle</legend>
         <div className="form-row">
           <label>
             Vehicle type *
@@ -76,7 +101,7 @@ export function AgentForm({ docsRequired = true, submitLabel, onSubmit }) {
       </fieldset>
 
       <fieldset>
-        <legend>3. Documents</legend>
+        <legend>4. Documents</legend>
         <div className="form-row">
           <label>Aadhaar number {docsRequired && '*'}<input value={form.aadhaar_number} onChange={set('aadhaar_number')} required={docsRequired} inputMode="numeric" placeholder="1234 5678 9012" /></label>
           <label>PAN number {docsRequired && '*'}<input value={form.pan_number} onChange={set('pan_number')} required={docsRequired} placeholder="ABCDE1234F" style={{ textTransform: 'uppercase' }} /></label>
@@ -91,7 +116,7 @@ export function AgentForm({ docsRequired = true, submitLabel, onSubmit }) {
       </fieldset>
 
       <fieldset>
-        <legend>4. Login for the agent app</legend>
+        <legend>5. Login for the agent app</legend>
         <div className="form-row">
           <label>Username *<input value={form.username} onChange={set('username')} required autoComplete="username" placeholder="e.g. kiran_hyd" /></label>
           <label>Password *<input type="password" value={form.password} onChange={set('password')} required autoComplete="new-password" placeholder="Min 6 characters" /></label>
@@ -140,10 +165,10 @@ export default function AgentApply() {
     <div className="apply-page">
       <header className="apply-hero">
         <Link to="/login" className="brand brand-lg"><span className="brand-logo">AS</span><span>All Services</span></Link>
-        <h1>Deliver with All Services 🛵</h1>
-        <p>Earn on every delivery across Hyderabad. Choose your own hours, get paid to your wallet, work near home.</p>
+        <h1>Work with All Services 🛵🔧⚡</h1>
+        <p>Delivery partners, plumbers, electricians, technicians, cleaners and more — earn on every job across Hyderabad. Choose your own hours, get paid to your wallet, work near home.</p>
         <div className="hero-chips">
-          <span className="chip">💰 Earn per delivery</span>
+          <span className="chip">💰 Earn per job</span>
           <span className="chip">🕒 Flexible hours</span>
           <span className="chip">📍 Work in your area</span>
         </div>
@@ -159,8 +184,8 @@ export default function AgentApply() {
           </div>
         ) : (
           <>
-            <h2>Apply to become a delivery agent</h2>
-            <p className="muted">Fill in your details and upload your documents. Fields marked * are required.</p>
+            <h2>Apply to join as an agent</h2>
+            <p className="muted">Tell us what work you do, fill in your details and upload your documents. Fields marked * are required.</p>
             <AgentForm
               submitLabel="Submit application"
               onSubmit={async (fd) => {

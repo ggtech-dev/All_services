@@ -114,8 +114,10 @@ router.delete('/categories/:id', cleansOldImages('categories'), h(async (req, re
 router.get('/services', h(async (req, res) => {
   const { rows } = await query(
     `SELECT s.*, c.name AS category_name, c.icon AS category_icon, c.color AS category_color,
+            t.name AS skill_name, t.icon AS skill_icon,
             (SELECT count(*) FROM products p WHERE p.service_id = s.id)::int AS product_count
        FROM services s JOIN categories c ON c.id = s.category_id
+       JOIN service_types t ON t.code = s.skill_code
       WHERE ($1::int IS NULL OR s.category_id = $1)
         AND ($2::text IS NULL OR s.name ILIKE '%' || $2 || '%')
       ORDER BY c.sort_order, s.sort_order, s.id`,
@@ -127,9 +129,10 @@ router.get('/services', h(async (req, res) => {
 const saveService = (id) => h(async (req, res) => {
   const b = req.body || {};
   const row = await asActor(req.user.id, async (db) =>
-    (await db.query('SELECT * FROM fn_save_service($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)', [
+    (await db.query('SELECT * FROM fn_save_service($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)', [
       id === null ? null : req.params.id, num(b.category_id), b.name, b.description, b.image_url, b.image_credit,
       num(b.base_price), b.price_unit, num(b.eta_minutes), bool(b.requires_license), bool(b.is_active),
+      b.skill_code || null,
     ])).rows[0]
   );
   res.status(id === null ? 201 : 200).json(row);
@@ -142,6 +145,12 @@ router.patch('/services/:id/price', h(async (req, res) => {
     (await db.query('SELECT * FROM fn_set_service_price($1,$2,$3)', [req.params.id, num(req.body?.base_price), req.body?.price_unit])).rows[0]
   );
   res.json(row);
+}));
+
+// body: { skill_code } — which type of agent does this service
+router.patch('/services/:id/skill', h(async (req, res) => {
+  await asActor(req.user.id, (db) => db.query('CALL sp_set_service_skill($1,$2)', [Number(req.params.id), req.body?.skill_code]));
+  res.status(204).end();
 }));
 
 router.patch('/services/:id/active', h(async (req, res) => {

@@ -7,7 +7,7 @@
 import { readFile } from 'node:fs/promises';
 import bcrypt from 'bcryptjs';
 import { pool, SCHEMA } from '../src/db.js';
-import { categories, localities, products } from './catalog.js';
+import { categories, localities, products, serviceSkills, serviceTypes } from './catalog.js';
 
 const refreshImages = process.argv.includes('--refresh-images');
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -39,6 +39,16 @@ try {
   await client.query(await sql('./orders.sql'));
 
   await client.query('BEGIN');
+
+  // Service types first: services and agents refer to them. Existing names/titles edited by the admin are kept.
+  for (const [i, [code, name, title, icon]] of serviceTypes.entries()) {
+    await client.query(
+      `INSERT INTO service_types (code, name, agent_title, icon, sort_order) VALUES ($1,$2,$3,$4,$5)
+       ON CONFLICT (code) DO NOTHING`,
+      [code, name, title, icon, i]
+    );
+  }
+
   let refreshed = 0;
   for (const [ci, c] of categories.entries()) {
     const img = image(c.image);
@@ -58,11 +68,13 @@ try {
       const sImg = image(kw);
       const slug = `${c.slug}-${slugify(name)}`;
       await client.query(
-        `INSERT INTO services (category_id, slug, name, image_url, image_credit, base_price, price_unit, eta_minutes, requires_license, sort_order)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+        `INSERT INTO services (category_id, slug, name, image_url, image_credit, base_price, price_unit, eta_minutes, requires_license, sort_order, skill_code)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
          ON CONFLICT (slug) DO NOTHING`,
-        [rows[0].id, slug, name, sImg.url, sImg.credit, price, unit, eta, license, si]
+        [rows[0].id, slug, name, sImg.url, sImg.credit, price, unit, eta, license, si, serviceSkills[name] || 'delivery']
       );
+      // Services created before types existed get their type once; later admin changes are kept.
+      await client.query('UPDATE services SET skill_code = $2 WHERE slug = $1 AND skill_code IS NULL', [slug, serviceSkills[name] || 'delivery']);
       if (refreshImages && sImg.url) {
         const r = await client.query('UPDATE services SET image_url=$2, image_credit=$3 WHERE slug=$1', [slug, sImg.url, sImg.credit]);
         refreshed += r.rowCount;
@@ -85,6 +97,20 @@ try {
       productCount += r.rowCount;
     }
   }
+
+  // Any other service without a type (e.g. added by the admin before types existed) becomes 'general'.
+  await client.query("UPDATE services SET skill_code = 'general' WHERE skill_code IS NULL");
+  // Old orders get the type of their first item's service.
+  await client.query(
+    `UPDATE orders o SET skill_code = coalesce((
+        SELECT s.skill_code FROM order_items i
+          LEFT JOIN products p ON p.id = i.product_id
+          JOIN services s ON s.id = coalesce(i.service_id, p.service_id)
+         WHERE i.order_id = o.id ORDER BY i.id LIMIT 1), 'delivery')
+      WHERE skill_code IS NULL`
+  );
+  await client.query("ALTER TABLE services ALTER COLUMN skill_code SET DEFAULT 'general', ALTER COLUMN skill_code SET NOT NULL");
+  await client.query("ALTER TABLE orders ALTER COLUMN skill_code SET DEFAULT 'delivery', ALTER COLUMN skill_code SET NOT NULL");
 
   // Order numbers start at #1001.
   await client.query(`SELECT setval('orders_id_seq', 1000) WHERE NOT EXISTS (SELECT 1 FROM orders)`);

@@ -16,12 +16,13 @@ const TABS = [
 
 export default function Orders() {
   const [params, setParams] = useSearchParams();
-  const [filter, setFilter] = useState({ status: 'active', q: '', date: '' });
+  const [filter, setFilter] = useState({ status: 'active', q: '', date: '', skill: params.get('skill') || '' });
+  const types = useLoad(() => api('/service-types'));
   const [openId, setOpenId] = useState(params.get('open') ? Number(params.get('open')) : null);
   const agent = params.get('agent');
   const customer = params.get('customer');
 
-  const qs = new URLSearchParams({ ...(filter.status && { status: filter.status }), ...(filter.q && { q: filter.q }), ...(filter.date && { date: filter.date }), ...(agent && { agent }), ...(customer && { customer }) });
+  const qs = new URLSearchParams({ ...(filter.status && { status: filter.status }), ...(filter.q && { q: filter.q }), ...(filter.date && { date: filter.date }), ...(filter.skill && { skill: filter.skill }), ...(agent && { agent }), ...(customer && { customer }) });
   const list = useLoad(() => api(`/admin/orders?${qs}`), [qs.toString()]);
   const stats = useLoad(() => api('/admin/orders-stats'));
   const refresh = () => {
@@ -54,6 +55,13 @@ export default function Orders() {
         </div>
       )}
 
+      {s?.waiting_no_agent > 0 && (
+        <div className="gap-alert">
+          ⚠️ {s.waiting_no_agent} waiting order{s.waiting_no_agent > 1 ? 's have' : ' has'} no active agent of the right type.
+          <Link to="/admin/service-types"> See agent types</Link> to add or assign agents.
+        </div>
+      )}
+
       {(agent || customer) && (
         <div className="filter-note">
           Showing orders for this {agent ? 'agent' : 'customer'} only.
@@ -71,6 +79,10 @@ export default function Orders() {
           ))}
         </div>
         <input className="toolbar-search" placeholder="🔍 Order #, customer, phone or area…" value={filter.q} onChange={(e) => setFilter({ ...filter, q: e.target.value })} />
+        <select value={filter.skill} onChange={(e) => setFilter({ ...filter, skill: e.target.value })} aria-label="Agent type">
+          <option value="">All agent types</option>
+          {types.data?.map((t) => <option key={t.code} value={t.code}>{t.icon} {t.name}</option>)}
+        </select>
         <input type="date" value={filter.date} onChange={(e) => setFilter({ ...filter, date: e.target.value })} className="date-input" />
       </div>
 
@@ -78,7 +90,7 @@ export default function Orders() {
         <div className="table-scroll">
           <table className="table">
             <thead>
-              <tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Agent</th><th aria-label="Open" /></tr>
+              <tr><th>Order</th><th>Customer</th><th>Items</th><th>Type</th><th>Total</th><th>Status</th><th>Agent</th><th aria-label="Open" /></tr>
             </thead>
             <tbody>
               {list.data?.map((o) => (
@@ -88,7 +100,8 @@ export default function Orders() {
                     <b>{o.contact_name}</b>
                     <div className="muted small">{o.contact_phone} · {o.locality_name}</div>
                   </td>
-                  <td className="summary-cell"><span className="muted small">{o.kind === 'service' ? '🔧 ' : ''}</span>{o.summary}</td>
+                  <td className="summary-cell">{o.summary}</td>
+                  <td className="nowrap"><span className="skill-chip small">{o.skill_icon} {o.skill_name}</span></td>
                   <td className="nowrap"><b>{rupees(o.total)}</b></td>
                   <td><StatusBadge status={o.status} kind={o.kind} /></td>
                   <td>{o.agent_name ? <><b>{o.agent_name}</b><div className="muted small">{o.agent_phone}</div></> : <span className="muted">—</span>}</td>
@@ -148,6 +161,7 @@ function OrderDetail({ id, onClose, onChanged }) {
       <div className="od">
         <div className="od-head">
           <StatusBadge status={order.status} kind={order.kind} />
+          <span className="skill-chip small">{order.skill_icon} {order.skill_name}</span>
           <span className="muted small">{stamps.map(([l, t]) => `${l} ${time(t)}`).join(' · ')}</span>
           {ACTIVE.includes(order.status) && <span className="od-otp" title="Customer's delivery OTP">OTP {order.delivery_otp}</span>}
         </div>
@@ -179,13 +193,16 @@ function OrderDetail({ id, onClose, onChanged }) {
         </div>
 
         <section className="od-agent">
-          <h4>{order.kind === 'service' ? 'Service partner' : 'Delivery agent'}</h4>
+          <h4>{order.agent_title}</h4>
           {order.agent_name ? (
             <p><b>{order.agent_name}</b> · <a href={`tel:${order.agent_phone}`}>{order.agent_phone}</a> · {VEHICLES[order.vehicle_type]} {order.vehicle_number}</p>
           ) : (
-            <p className="muted">Not assigned yet — agents near {order.locality_name} can see this order.</p>
+            <p className="muted">Not assigned yet — {order.skill_name} agents near {order.locality_name} can see this order.</p>
           )}
-          {canAssign && (
+          {canAssign && !order.candidates.length && (
+            <p className="gap-alert small">No active {order.skill_name} agents. <Link to="/admin/agents" onClick={onClose}>Add one</Link> or give an agent this type of work.</p>
+          )}
+          {canAssign && order.candidates.length > 0 && (
             <div className="assign-row">
               <select value={agentId} onChange={(e) => setAgentId(e.target.value)}>
                 <option value="">{order.agent_name ? 'Re-assign to…' : 'Assign to an agent…'}</option>

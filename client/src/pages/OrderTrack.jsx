@@ -21,7 +21,7 @@ export default function OrderTrack() {
   if (!order) return <div className="center-block"><div className="spinner" /></div>;
 
   const isService = order.kind === 'service';
-  const who = isService ? 'partner' : 'agent';
+  const who = (order.agent_title || (isService ? 'partner' : 'delivery partner')).toLowerCase();
   const stepIndex = STEPS.indexOf(order.status);
   const labels = stepLabels(order.kind);
   const stepTime = { placed: order.created_at, assigned: order.assigned_at, picked_up: order.picked_up_at, delivered: order.delivered_at };
@@ -84,7 +84,7 @@ export default function OrderTrack() {
           <section className="panel agent-card">
             <div className="agent-avatar">{order.agent_name[0]}</div>
             <div className="agent-info">
-              <small className="muted">Your {who}</small>
+              <small className="muted">Your {who} {order.skill_icon}</small>
               <b>{order.agent_name}</b>
               <small className="muted">{VEHICLES[order.vehicle_type]} {order.vehicle_number && `· ${order.vehicle_number}`}</small>
             </div>

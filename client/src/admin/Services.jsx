@@ -4,7 +4,7 @@ import { api, formatEta } from '../api.js';
 import { ImagePicker, Modal, PriceCell, RowImage, Switch, useLoad, useToast } from './ui.jsx';
 
 export const EMPTY_SERVICE = {
-  category_id: '', name: '', description: '', image_url: '', image_credit: '',
+  skill_code: 'delivery', category_id: '', name: '', description: '', image_url: '', image_credit: '',
   base_price: '', price_unit: '', eta_minutes: '', requires_license: false, is_active: true,
 };
 
@@ -79,6 +79,18 @@ export default function Services() {
 
 export function ServicesTable({ rows, total, loading, reload, onEdit }) {
   const toast = useToast();
+  const types = useLoad(() => api('/service-types'));
+
+  const setSkill = async (s, code) => {
+    try {
+      await api(`/admin/services/${s.id}/skill`, { method: 'PATCH', body: { skill_code: code } });
+      const t = types.data?.find((x) => x.code === code);
+      toast(`${s.name} now goes to ${t ? `${t.icon} ${t.name}` : code} agents`);
+      reload();
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  };
 
   const setPrice = async (s, value) => {
     await api(`/admin/services/${s.id}/price`, { method: 'PATCH', body: { base_price: value } });
@@ -117,6 +129,7 @@ export function ServicesTable({ rows, total, loading, reload, onEdit }) {
               <th>Service <small className="th-hint">· click photo to change</small></th>
               <th>Category</th>
               <th>Price (₹) <small className="th-hint">· click to edit</small></th>
+              <th>Agent type <small className="th-hint">· who gets these orders</small></th>
               <th>Time</th>
               <th>Products</th>
               <th>Live</th>
@@ -137,6 +150,13 @@ export function ServicesTable({ rows, total, loading, reload, onEdit }) {
                 </td>
                 <td><span className="cat-pill" style={{ '--c': s.category_color }}>{s.category_icon} {s.category_name}</span></td>
                 <td><PriceCell value={s.base_price} unit={s.price_unit} onSave={(v) => setPrice(s, v)} /></td>
+                <td>
+                  <select className="type-select" value={s.skill_code} onChange={(e) => setSkill(s, e.target.value)} aria-label={`Agent type for ${s.name}`}>
+                    {(types.data || [{ code: s.skill_code, name: s.skill_name, icon: s.skill_icon }]).map((t) => (
+                      <option key={t.code} value={t.code}>{t.icon} {t.name}</option>
+                    ))}
+                  </select>
+                </td>
                 <td className="nowrap">{formatEta(s.eta_minutes)}</td>
                 <td className="nowrap">
                   <Link className="link" to={`/admin/products?service=${s.id}`}>
@@ -174,6 +194,7 @@ export function ServiceForm({ service, categories, onClose, onSaved }) {
   }));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const types = useLoad(() => api('/service-types'));
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const category = categories.find((c) => c.id === Number(form.category_id));
 
@@ -227,6 +248,13 @@ export function ServiceForm({ service, categories, onClose, onSaved }) {
             </select>
           </label>
         </div>
+        <label>
+          Which agents do this service? *
+          <select value={form.skill_code} onChange={set('skill_code')} required>
+            {types.data?.map((t) => <option key={t.code} value={t.code}>{t.icon} {t.name} — goes to {t.agent_title.toLowerCase()}s</option>)}
+          </select>
+          <small className="muted">Orders for this service are shown only to agents of this type.</small>
+        </label>
         <label>
           Description
           <textarea rows={2} value={form.description} onChange={set('description')} placeholder="Short description shown to customers (optional)" />

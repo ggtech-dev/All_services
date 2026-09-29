@@ -307,3 +307,11 @@ a.stat-tile:hover { transform: translateY(-2px); }
   .wallet-list li { grid-template-columns: 1fr auto; }
   .wallet-list li .muted { grid-column: 1 / -1; order: 3; }
 }
+
+/* ---------- agent types ---------- */
+.type-select { width: auto; max-width: 190px; padding: 6px 8px; font-size: 13px; }
+.type-icon { font-size: 18px; }
+.warn-tag { background: #fee2e2; color: #b91c1c; }
+.free-count { font-weight: 600; color: #15803d; }
+.skills-edit { background: #f8fafc; border-radius: 12px; padding: 14px; }
+.skills-save { display: flex; gap: 8px; align-items: center; margin-top: 10px; }

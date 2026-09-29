@@ -64,7 +64,7 @@ Default admin: `admin` / `Admin@123` (set `ADMIN_PASSWORD` before the first `db:
 |---|---|
 | Dashboard | Counts, services per category, recent changes |
 | **Manage orders** | Every order with customer, items, total, status (waiting → assigned → on the way → delivered / cancelled) and agent. Filters, search, date. Order detail: timeline, OTP, assign / re-assign to a free agent (nearest first), cancel |
-| **Manage agents** | All agents with live state (🟢 free, 🔵 on delivery, ⚪ offline), today's and total deliveries, wallet, cash in hand. Applications tab: view uploaded documents, approve / reject. Add agent directly, copy the apply link, suspend / re-activate. Agent detail: 7-day report, recent orders, wallet (pay agent, cash received, bonus) |
+| **Manage agents** | Filter by type of work; edit an agent's types.  All agents with live state (🟢 free, 🔵 on delivery, ⚪ offline), today's and total deliveries, wallet, cash in hand. Applications tab: view uploaded documents, approve / reject. Add agent directly, copy the apply link, suspend / re-activate. Agent detail: 7-day report, recent orders, wallet (pay agent, cash received, bonus) |
 | Services | Add / edit / delete services, click a price to edit it, click a photo to upload a new one, show/hide (Live switch) |
 | Products | Items inside a service (e.g. Milk Delivery → Vijaya Toned Milk 500 ml): add / edit / delete, price & MRP edited in place, photo upload, in-stock and Live switches |
 | Categories | Add / edit / delete categories, icon, colour, image, show/hide |
@@ -91,6 +91,7 @@ All writes from the admin panel go through PostgreSQL functions/procedures in [`
 | `fn_place_order`, `sp_cancel_order` | Validated order placement with DB prices, delivery fee, OTP; cancellation rules |
 | `fn_create_agent`, `sp_review_agent`, `sp_set_agent_status`, `sp_set_agent_online` | Agent applications (Aadhaar/PAN/DL validation), approval, suspend, online/offline |
 | `fn_agent_accept_order`, `fn_admin_assign_order`, `sp_agent_release_order`, `fn_agent_update_order` | Race-safe accept, assignment, pickup, OTP delivery with wallet credit |
+| `fn_clean_skills`, `sp_set_agent_skills`, `sp_set_service_skill`, `fn_save_service_type`, `fn_service_type_overview` | Agent types: validation, editing, coverage report |
 | `sp_wallet_entry`, `fn_agent_stats`, `fn_order_stats`, `v_agents` | Wallet (payout ≤ balance), agent reports, live free/busy/offline state |
 | triggers | price history for services and products, `admin_audit_log` on every category/service/product change, `updated_at`, and a check that a product's selling price is never above its MRP |
 
@@ -99,6 +100,16 @@ The API tags each admin transaction with the admin's user id (`SET LOCAL app.use
 Seed products are Telangana staples (Vijaya & Heritage dairy, Sona Masoori rice, Guntur chilli powder, gongura, Osmania biscuits, murrel…). Products start with an emoji tile; admins upload real photos from the admin panel.
 
 `npm run db:setup` is safe to re-run: it upgrades the schema and adds missing seed rows but never overwrites changes made in the admin panel.
+
+## Agent types (who gets which orders)
+
+Every **service** has one type of work () and every **agent** has one or more (), from the  table: Delivery, Plumbing, Electrical, Appliance repair, Cleaning, Carpentry, Painting, Beauty, Vehicle, Health, Tech repair, Tutoring, Pet care, Recycling, Moving, General.
+
+- An order gets the type of its service (); product orders go to Delivery agents.
+- Agents only **see and can accept** orders of their types. Admin can only assign an order to an agent of the right type.
+- Admin → **Agent types** shows, per type, how many services, agents (free now) and waiting orders — with a warning when a type has services but no agents.
+- Change a service's type in **Services** (dropdown in the row); change an agent's types in **Manage agents** → agent → *Types of work*. New applicants choose their types on the apply page.
+- Customers see the right word: “Your plumber”, “Your electrician”, “Your delivery partner”.
 
 ## How an order flows
 

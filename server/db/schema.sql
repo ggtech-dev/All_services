@@ -223,3 +223,22 @@ CREATE TABLE IF NOT EXISTS agent_wallet (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS agent_wallet_agent_idx ON agent_wallet(agent_id, created_at DESC);
+
+-- ============ service types (skills) ============
+-- Every service has one type; every agent has one or more. Orders only go to agents with the matching type,
+-- e.g. "Plumber on Demand" (plumbing) is only offered to plumbing agents.
+CREATE TABLE IF NOT EXISTS service_types (
+  code        VARCHAR(30) PRIMARY KEY,
+  name        VARCHAR(60) NOT NULL,
+  agent_title VARCHAR(40) NOT NULL,          -- what customers see: "Your plumber", "Your delivery partner"
+  icon        VARCHAR(10),
+  sort_order  INT NOT NULL DEFAULT 0,
+  is_active   BOOLEAN NOT NULL DEFAULT true
+);
+
+-- skill_code is back-filled by setup.js for existing rows, then made NOT NULL.
+ALTER TABLE services ADD COLUMN IF NOT EXISTS skill_code VARCHAR(30) REFERENCES service_types(code) ON UPDATE CASCADE;
+ALTER TABLE orders   ADD COLUMN IF NOT EXISTS skill_code VARCHAR(30) REFERENCES service_types(code) ON UPDATE CASCADE;
+ALTER TABLE agents   ADD COLUMN IF NOT EXISTS skills TEXT[] NOT NULL DEFAULT '{delivery}';
+CREATE INDEX IF NOT EXISTS orders_skill_idx ON orders(skill_code) WHERE status = 'placed';
+CREATE INDEX IF NOT EXISTS agents_skills_idx ON agents USING gin (skills);

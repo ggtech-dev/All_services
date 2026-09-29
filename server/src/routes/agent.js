@@ -34,6 +34,10 @@ export const docUpload = multer({
 const removeFiles = (files) =>
   Promise.all(Object.values(files || {}).flat().map((f) => unlink(f.path).catch(() => {})));
 
+// Skills arrive from forms as repeated fields, a comma list or an array: always return an array.
+export const parseSkills = (v) =>
+  (Array.isArray(v) ? v : String(v ?? '').split(',')).map((x) => String(x).trim()).filter(Boolean);
+
 // Creates an agent from a multipart form. status: 'pending' (public application) or 'active' (added by admin).
 export async function createAgent(req, status) {
   const b = req.body || {};
@@ -47,10 +51,11 @@ export async function createAgent(req, status) {
     }
     const hash = await bcrypt.hash(b.password, 10);
     return await asActor(req.user?.id ?? null, async (db) =>
-      (await db.query('SELECT * FROM fn_create_agent($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)', [
+      (await db.query('SELECT * FROM fn_create_agent($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)', [
         b.username, hash, b.full_name, b.phone, b.email, b.vehicle_type || 'bike', b.vehicle_number,
         b.aadhaar_number, b.pan_number, b.dl_number, b.locality_id ? Number(b.locality_id) : null,
         doc('aadhaar_doc'), doc('pan_doc'), doc('dl_doc'), doc('photo_doc'), status, req.user?.id ?? null,
+        parseSkills(b.skills),
       ])).rows[0]
     );
   } catch (err) {
@@ -78,9 +83,11 @@ router.use(requireAuth, requireRole('agent'), h(async (req, res, next) => {
 router.get('/me', h(async (req, res) => {
   const [{ rows: agent }, { rows: stats }] = await Promise.all([
     query(
-      `SELECT user_id, username, full_name, phone, email, vehicle_type, vehicle_number, locality_id, locality_name,
-              is_online, state, status, joined_at
-         FROM v_agents WHERE user_id = $1`,
+      `SELECT v.user_id, v.username, v.full_name, v.phone, v.email, v.vehicle_type, v.vehicle_number, v.locality_id,
+              v.locality_name, v.is_online, v.state, v.status, v.joined_at, v.skills,
+              (SELECT json_agg(json_build_object('code', t.code, 'name', t.name, 'icon', t.icon) ORDER BY t.sort_order)
+                 FROM service_types t WHERE t.code = ANY (v.skills)) AS skill_list
+         FROM v_agents v WHERE v.user_id = $1`,
       [req.user.id]
     ),
     query("SELECT fn_agent_stats($1) || jsonb_build_object('pay_per_order', fn_setting_num('agent_pay_per_order', 25)) AS s", [req.user.id]),
@@ -100,14 +107,17 @@ router.patch('/status', h(async (req, res) => {
 router.get('/available', h(async (req, res) => {
   const { rows } = await query(
     `SELECT o.id, o.kind, o.total, o.slot, o.created_at, l.name AS locality_name, o.pincode,
+            st.name AS skill_name, st.icon AS skill_icon,
             (SELECT count(*) FROM order_items i WHERE i.order_id = o.id)::int AS item_count,
             (SELECT string_agg(i.name || CASE WHEN i.qty > 1 THEN ' x' || i.qty ELSE '' END, ', ' ORDER BY i.id)
                FROM order_items i WHERE i.order_id = o.id) AS summary,
             CASE WHEN me.lat IS NOT NULL THEN fn_distance_km(me.lat, me.lng, l.lat, l.lng) END AS distance_km
        FROM orders o
        JOIN localities l ON l.id = o.locality_id
+       JOIN service_types st ON st.code = o.skill_code
        LEFT JOIN (SELECT l2.lat, l2.lng FROM agents a JOIN localities l2 ON l2.id = a.locality_id WHERE a.user_id = $1) me ON true
       WHERE o.status = 'placed' AND o.agent_id IS NULL
+        AND o.skill_code = ANY ((SELECT skills FROM agents WHERE user_id = $1)::text[])
       ORDER BY distance_km NULLS LAST, o.created_at
       LIMIT 50`,
     [req.user.id]

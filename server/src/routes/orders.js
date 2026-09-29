@@ -14,7 +14,7 @@ export async function loadOrder(id, { customerId } = {}) {
     `SELECT o.*, l.name AS locality_name, l.lat AS locality_lat, l.lng AS locality_lng,
             cu.full_name AS customer_name, cu.username AS customer_username, cu.phone AS customer_phone,
             ag.full_name AS agent_name, ag.phone AS agent_phone, a.vehicle_type, a.vehicle_number,
-            s.name AS service_name,
+            s.name AS service_name, st.name AS skill_name, st.agent_title, st.icon AS skill_icon,
             (SELECT c.icon FROM order_items i
                LEFT JOIN products p ON p.id = i.product_id
                LEFT JOIN services s2 ON s2.id = coalesce(i.service_id, p.service_id)
@@ -23,6 +23,7 @@ export async function loadOrder(id, { customerId } = {}) {
        FROM orders o
        JOIN localities l ON l.id = o.locality_id
        JOIN users cu ON cu.id = o.customer_id
+       JOIN service_types st ON st.code = o.skill_code
        LEFT JOIN agents a ON a.user_id = o.agent_id
        LEFT JOIN users ag ON ag.id = o.agent_id
        LEFT JOIN LATERAL (SELECT s.name FROM order_items i JOIN services s ON s.id = i.service_id
@@ -83,11 +84,12 @@ router.post('/', h(async (req, res) => {
 router.get('/', h(async (req, res) => {
   const { rows } = await query(
     `SELECT o.id, o.kind, o.status, o.total, o.created_at, o.delivered_at, o.delivery_otp,
-            ag.full_name AS agent_name,
+            ag.full_name AS agent_name, st.agent_title,
             (SELECT count(*) FROM order_items i WHERE i.order_id = o.id)::int AS item_count,
             (SELECT string_agg(i.name || CASE WHEN i.qty > 1 THEN ' x' || i.qty ELSE '' END, ', ' ORDER BY i.id)
                FROM order_items i WHERE i.order_id = o.id) AS summary
        FROM orders o LEFT JOIN users ag ON ag.id = o.agent_id
+       JOIN service_types st ON st.code = o.skill_code
       WHERE o.customer_id = $1
       ORDER BY o.created_at DESC LIMIT 100`,
     [req.user.id]

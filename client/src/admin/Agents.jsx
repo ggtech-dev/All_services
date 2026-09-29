@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../api.js';
 import { Modal, timeAgo, useLoad, useToast } from './ui.jsx';
 import { StateBadge, StatusBadge, VEHICLES, rupees, when } from '../orderStatus.jsx';
-import { AGENT_DOCS, AgentForm } from '../pages/AgentApply.jsx';
+import { AGENT_DOCS, AgentForm, SkillPicker } from '../pages/AgentApply.jsx';
 
 const TABS = [
   ['', 'All agents'],
@@ -21,11 +21,16 @@ export default function Agents() {
   const [q, setQ] = useState('');
   const [openId, setOpenId] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [params] = useSearchParams();
+  const [skill, setSkill] = useState(params.get('skill') || '');
   const all = useLoad(() => api('/admin/agents'));
+  const types = useLoad(() => api('/service-types'));
+  const typeOf = (code) => types.data?.find((t) => t.code === code);
 
-  const count = (state) => (all.data || []).filter((a) => !state || a.state === state).length;
+  const inSkill = (a) => !skill || a.skills.includes(skill);
+  const count = (state) => (all.data || []).filter((a) => inSkill(a) && (!state || a.state === state)).length;
   const rows = (all.data || []).filter(
-    (a) => (!tab || a.state === tab) && (!q || `${a.full_name} ${a.phone} ${a.username} ${a.locality_name || ''}`.toLowerCase().includes(q.toLowerCase()))
+    (a) => inSkill(a) && (!tab || a.state === tab) && (!q || `${a.full_name} ${a.phone} ${a.username} ${a.locality_name || ''}`.toLowerCase().includes(q.toLowerCase()))
   );
   const applyLink = `${window.location.origin}/agent/apply`;
 
@@ -42,6 +47,10 @@ export default function Agents() {
       </div>
       <div className="toolbar">
         <input className="toolbar-search" placeholder="🔍 Name, phone, username or area…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <select value={skill} onChange={(e) => setSkill(e.target.value)} aria-label="Type of work">
+          <option value="">All types of work</option>
+          {types.data?.map((t) => <option key={t.code} value={t.code}>{t.icon} {t.name}</option>)}
+        </select>
         <button
           className="btn btn-ghost"
           onClick={() => navigator.clipboard?.writeText(applyLink).then(() => toast('Application link copied — share it on WhatsApp'), () => prompt('Copy this link:', applyLink))}
@@ -61,6 +70,7 @@ export default function Agents() {
                 <div>
                   <b>{a.full_name}</b>
                   <div className="muted small">{a.phone} · {VEHICLES[a.vehicle_type]} · {a.locality_name || 'area not set'}</div>
+                  <div className="chip-row">{a.skills.map((c) => <span key={c} className="skill-chip small">{typeOf(c)?.icon} {typeOf(c)?.name || c}</span>)}</div>
                   <div className="muted small">Applied {when(a.created_at)}</div>
                 </div>
               </div>
@@ -73,7 +83,7 @@ export default function Agents() {
           <div className="table-scroll">
             <table className="table">
               <thead>
-                <tr><th>Agent</th><th>Status</th><th>Area</th><th>Today</th><th>Total</th><th>Wallet</th><th>Cash in hand</th><th aria-label="Open" /></tr>
+                <tr><th>Agent</th><th>Types of work</th><th>Status</th><th>Area</th><th>Today</th><th>Total</th><th>Wallet</th><th>Cash in hand</th><th aria-label="Open" /></tr>
               </thead>
               <tbody>
                 {rows.map((a) => (
@@ -84,6 +94,7 @@ export default function Agents() {
                         <div><b>{a.full_name}</b><div className="muted small">{a.phone} · {VEHICLES[a.vehicle_type]}</div></div>
                       </div>
                     </td>
+                    <td><div className="chip-row">{a.skills.map((c) => <span key={c} className="skill-chip small" title={typeOf(c)?.name}>{typeOf(c)?.icon} {typeOf(c)?.name || c}</span>)}</div></td>
                     <td>
                       <StateBadge state={a.state} />
                       {a.last_seen_at && a.state === 'offline' && <div className="muted small">seen {timeAgo(a.last_seen_at)}</div>}
@@ -119,7 +130,7 @@ export default function Agents() {
           />
         </Modal>
       )}
-      {openId && <AgentDetail id={openId} onClose={() => setOpenId(null)} onChanged={all.reload} />}
+      {openId && <AgentDetail id={openId} types={types.data || []} onClose={() => setOpenId(null)} onChanged={all.reload} />}
     </div>
   );
 }
@@ -152,13 +163,20 @@ const WALLET_ACTIONS = {
   bonus: { label: 'Give bonus', hint: 'Extra earning added to their wallet' },
 };
 
-function AgentDetail({ id, onClose, onChanged }) {
+function AgentDetail({ id, types, onClose, onChanged }) {
   const toast = useToast();
   const [data, setData] = useState(null);
+  const [skills, setSkills] = useState(null);
   const [busy, setBusy] = useState(false);
   const [wallet, setWallet] = useState({ type: 'payout', amount: '', note: '' });
 
-  const load = useCallback(() => api(`/admin/agents/${id}`).then(setData).catch((e) => toast(e.message, 'error')), [id, toast]);
+  const load = useCallback(
+    () => api(`/admin/agents/${id}`).then((d) => {
+      setData(d);
+      setSkills(d.agent.skills);
+    }).catch((e) => toast(e.message, 'error')),
+    [id, toast]
+  );
   useEffect(() => {
     load();
   }, [load]);
@@ -224,6 +242,21 @@ function AgentDetail({ id, onClose, onChanged }) {
           </div>
         </div>
         {a.status === 'rejected' && <div className="alert">Rejected: {a.rejection_reason}</div>}
+
+        <section className="skills-edit">
+          <h4>Types of work <span className="muted small">— this agent only sees and gets these orders</span></h4>
+          <SkillPicker types={types} value={skills || []} onChange={setSkills} />
+          {skills && skills.slice().sort().join() !== a.skills.slice().sort().join() && (
+            <div className="skills-save">
+              <button className="btn btn-primary btn-sm" disabled={busy || !skills.length}
+                onClick={() => act(() => api(`/admin/agents/${a.user_id}/skills`, { method: 'PATCH', body: { skills } }), 'Types of work updated')}>
+                Save types of work
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setSkills(a.skills)}>Undo</button>
+              {!skills.length && <small className="error-text">Choose at least one</small>}
+            </div>
+          )}
+        </section>
 
         <div className="od-grid">
           <section>

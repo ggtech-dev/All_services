@@ -15,6 +15,7 @@ import Dashboard from './admin/Dashboard.jsx';
 import Orders from './admin/Orders.jsx';
 import Agents from './admin/Agents.jsx';
 import Services from './admin/Services.jsx';
+import ServiceTypes from './admin/ServiceTypes.jsx';
 import Products from './admin/Products.jsx';
 import Categories from './admin/Categories.jsx';
 import Pricing from './admin/Pricing.jsx';
@@ -75,6 +76,7 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="orders" element={<Orders />} />
         <Route path="agents" element={<Agents />} />
+        <Route path="service-types" element={<ServiceTypes />} />
         <Route path="services" element={<Services />} />
         <Route path="products" element={<Products />} />
         <Route path="categories" element={<Categories />} />

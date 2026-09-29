@@ -64,6 +64,8 @@ DECLARE
   v_sub    NUMERIC := 0;
   v_fee    NUMERIC := 0;
   v_kind   TEXT;
+  v_skills TEXT[] := ARRAY[]::TEXT[];
+  v_skill  TEXT;
   v_phone  TEXT := regexp_replace(coalesce(p_contact->>'phone', ''), '\D', '', 'g');
 BEGIN
   -- contact & address
@@ -90,6 +92,7 @@ BEGIN
       RAISE EXCEPTION 'This service is not available right now' USING ERRCODE = '22023';
     END IF;
     v_sub := v_svc.base_price;
+    v_skill := v_svc.skill_code;
   ELSE
     IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
       RAISE EXCEPTION 'Your cart is empty' USING ERRCODE = '22023';
@@ -101,11 +104,11 @@ BEGIN
   END IF;
 
   INSERT INTO orders (customer_id, kind, contact_name, contact_phone, address_line, landmark, locality_id, pincode,
-                      slot, notes, subtotal, delivery_fee, total, delivery_otp)
+                      slot, notes, subtotal, delivery_fee, total, delivery_otp, skill_code)
   VALUES (p_customer_id, v_kind, trim(p_contact->>'name'), v_phone, trim(p_contact->>'address_line'),
           nullif(trim(p_contact->>'landmark'), ''), (p_contact->>'locality_id')::int,
           nullif(trim(p_contact->>'pincode'), ''), nullif(trim(p_slot), ''), nullif(trim(p_notes), ''),
-          0, v_fee, 0, lpad(floor(random() * 10000)::int::text, 4, '0'))
+          0, v_fee, 0, lpad(floor(random() * 10000)::int::text, 4, '0'), coalesce(v_skill, 'delivery'))
   RETURNING * INTO v;
 
   IF v_kind = 'service' THEN
@@ -117,7 +120,7 @@ BEGIN
       IF v_qty IS NULL OR v_qty < 1 OR v_qty > 50 THEN
         RAISE EXCEPTION 'Quantity must be between 1 and 50' USING ERRCODE = '22023';
       END IF;
-      SELECT p.id, p.name, p.brand, p.unit, p.price, p.in_stock INTO v_prod
+      SELECT p.id, p.name, p.brand, p.unit, p.price, p.in_stock, s.skill_code INTO v_prod
         FROM products p JOIN services s ON s.id = p.service_id
        WHERE p.id = (v_item->>'product_id')::int AND p.is_active AND s.is_active;
       IF NOT FOUND THEN
@@ -129,10 +132,13 @@ BEGIN
       INSERT INTO order_items (order_id, product_id, name, unit, price, qty, line_total)
       VALUES (v.id, v_prod.id, v_prod.name, v_prod.unit, v_prod.price, v_qty, v_prod.price * v_qty);
       v_sub := v_sub + v_prod.price * v_qty;
+      v_skills := array_append(v_skills, v_prod.skill_code);
     END LOOP;
+    -- Products from one kind of service go to that type of agent; a mixed cart goes to delivery agents.
+    v_skill := CASE WHEN (SELECT count(DISTINCT x) FROM unnest(v_skills) x) = 1 THEN v_skills[1] ELSE 'delivery' END;
   END IF;
 
-  UPDATE orders SET subtotal = v_sub, total = v_sub + v_fee WHERE id = v.id RETURNING * INTO v;
+  UPDATE orders SET subtotal = v_sub, total = v_sub + v_fee, skill_code = v_skill WHERE id = v.id RETURNING * INTO v;
   RETURN v;
 END $$;
 
@@ -160,11 +166,41 @@ END $$;
 
 -- ============ agents: apply, review, status ============
 
+-- Validates a list of service-type codes for an agent: known, active, at least one, no duplicates.
+CREATE OR REPLACE FUNCTION fn_clean_skills(p_skills TEXT[]) RETURNS TEXT[]
+LANGUAGE plpgsql STABLE SET search_path FROM CURRENT AS $$
+DECLARE
+  v TEXT[] := ARRAY(SELECT DISTINCT trim(x) FROM unnest(coalesce(p_skills, '{}')) x WHERE trim(x) <> '' ORDER BY 1);
+  v_bad TEXT;
+BEGIN
+  IF cardinality(v) = 0 THEN
+    RAISE EXCEPTION 'Choose at least one type of work' USING ERRCODE = '22023';
+  END IF;
+  SELECT x INTO v_bad FROM unnest(v) x WHERE NOT EXISTS (SELECT 1 FROM service_types t WHERE t.code = x AND t.is_active) LIMIT 1;
+  IF v_bad IS NOT NULL THEN
+    RAISE EXCEPTION 'Unknown type of work: %', v_bad USING ERRCODE = '22023';
+  END IF;
+  RETURN v;
+END $$;
+
+-- Admin changes which types of orders an agent can take.
+CREATE OR REPLACE PROCEDURE sp_set_agent_skills(p_agent_id INT, p_skills TEXT[])
+LANGUAGE plpgsql SET search_path FROM CURRENT AS $$
+BEGIN
+  UPDATE agents SET skills = fn_clean_skills(p_skills) WHERE user_id = p_agent_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Agent not found' USING ERRCODE = 'P0002';
+  END IF;
+END $$;
+
 -- Creates the login + agent profile. p_status 'pending' for applications, 'active' when an admin adds the agent.
+-- p_skills: the types of work the agent does, e.g. {plumbing} or {electrical,appliance}.
+DROP FUNCTION IF EXISTS fn_create_agent(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INT, TEXT, TEXT, TEXT, TEXT, TEXT, INT);
 CREATE OR REPLACE FUNCTION fn_create_agent(
   p_username TEXT, p_password_hash TEXT, p_full_name TEXT, p_phone TEXT, p_email TEXT,
   p_vehicle_type TEXT, p_vehicle_number TEXT, p_aadhaar TEXT, p_pan TEXT, p_dl TEXT, p_locality_id INT,
-  p_aadhaar_doc TEXT, p_pan_doc TEXT, p_dl_doc TEXT, p_photo_doc TEXT, p_status TEXT, p_reviewed_by INT
+  p_aadhaar_doc TEXT, p_pan_doc TEXT, p_dl_doc TEXT, p_photo_doc TEXT, p_status TEXT, p_reviewed_by INT,
+  p_skills TEXT[] DEFAULT '{delivery}'
 ) RETURNS agents
 LANGUAGE plpgsql SET search_path FROM CURRENT AS $$
 DECLARE
@@ -212,11 +248,12 @@ BEGIN
   RETURNING id INTO v_user_id;
 
   INSERT INTO agents (user_id, status, vehicle_type, vehicle_number, aadhaar_masked, pan_number, dl_number,
-                      aadhaar_doc, pan_doc, dl_doc, photo_doc, locality_id, reviewed_by, reviewed_at)
+                      aadhaar_doc, pan_doc, dl_doc, photo_doc, locality_id, reviewed_by, reviewed_at, skills)
   VALUES (v_user_id, p_status, p_vehicle_type, nullif(upper(trim(p_vehicle_number)), ''),
           CASE WHEN v_aadhaar ~ '^\d{12}$' THEN 'XXXX XXXX ' || right(v_aadhaar, 4) END,
           nullif(v_pan, ''), nullif(v_dl, ''), p_aadhaar_doc, p_pan_doc, p_dl_doc, p_photo_doc, p_locality_id,
-          CASE WHEN p_status = 'active' THEN p_reviewed_by END, CASE WHEN p_status = 'active' THEN now() END)
+          CASE WHEN p_status = 'active' THEN p_reviewed_by END, CASE WHEN p_status = 'active' THEN now() END,
+          fn_clean_skills(p_skills))
   RETURNING * INTO v;
   RETURN v;
 END $$;
@@ -291,6 +328,12 @@ BEGIN
     RAISE EXCEPTION 'Finish your current order before taking a new one' USING ERRCODE = '55000';
   END IF;
 
+  IF EXISTS (SELECT 1 FROM orders WHERE id = p_order_id AND NOT (skill_code = ANY (a.skills))) THEN
+    RAISE EXCEPTION 'This order needs a % agent',
+      (SELECT t.name FROM orders o JOIN service_types t ON t.code = o.skill_code WHERE o.id = p_order_id)
+      USING ERRCODE = '55000';
+  END IF;
+
   PERFORM set_config('app.event_note', 'Accepted by agent', true);
   UPDATE orders SET agent_id = p_agent_id, status = 'assigned', assigned_at = now()
    WHERE id = p_order_id AND status = 'placed' AND agent_id IS NULL
@@ -309,6 +352,12 @@ DECLARE
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM agents WHERE user_id = p_agent_id AND status = 'active') THEN
     RAISE EXCEPTION 'Choose an active agent' USING ERRCODE = '22023';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM orders o JOIN agents a ON a.user_id = p_agent_id
+                  WHERE o.id = p_order_id AND o.skill_code = ANY (a.skills)) THEN
+    RAISE EXCEPTION 'This agent does not do % work. Add it to their types of work first.',
+      (SELECT t.name FROM orders o JOIN service_types t ON t.code = o.skill_code WHERE o.id = p_order_id)
+      USING ERRCODE = '22023';
   END IF;
   PERFORM set_config('app.event_note', 'Assigned by admin', true);
   UPDATE orders SET agent_id = p_agent_id, status = 'assigned', assigned_at = now()
@@ -466,7 +515,62 @@ LANGUAGE sql STABLE SET search_path FROM CURRENT AS $$
     'agents_busy',      (SELECT count(*) FROM v_agents WHERE state = 'busy'),
     'agents_offline',   (SELECT count(*) FROM v_agents WHERE state = 'offline'),
     'pending_applications', (SELECT count(*) FROM agents WHERE status = 'pending'),
+    'waiting_no_agent', (SELECT count(*) FROM orders o WHERE o.status = 'placed'
+                           AND NOT EXISTS (SELECT 1 FROM agents a WHERE a.status = 'active' AND o.skill_code = ANY (a.skills))),
     'cash_with_agents', (SELECT coalesce(sum(CASE WHEN type = 'cod_collected' THEN amount ELSE -amount END), 0)
                            FROM agent_wallet WHERE type IN ('cod_collected', 'cod_deposited'))
   )
 $$;
+
+-- ============ service types ============
+
+-- Creates or updates a service type. The code is made from the name for new types and never changes.
+CREATE OR REPLACE FUNCTION fn_save_service_type(p_code TEXT, p_name TEXT, p_agent_title TEXT, p_icon TEXT, p_is_active BOOLEAN)
+RETURNS service_types
+LANGUAGE plpgsql SET search_path FROM CURRENT AS $$
+DECLARE
+  v service_types;
+  v_code TEXT := trim(both '_' from lower(regexp_replace(trim(coalesce(nullif(p_code, ''), p_name, '')), '[^a-zA-Z0-9]+', '_', 'g')));
+BEGIN
+  IF coalesce(trim(p_name), '') = '' OR coalesce(trim(p_agent_title), '') = '' THEN
+    RAISE EXCEPTION 'Name and agent title are required' USING ERRCODE = '22023';
+  END IF;
+  IF v_code = '' THEN
+    RAISE EXCEPTION 'Enter a name' USING ERRCODE = '22023';
+  END IF;
+  INSERT INTO service_types (code, name, agent_title, icon, is_active, sort_order)
+  VALUES (v_code, trim(p_name), trim(p_agent_title), nullif(trim(p_icon), ''), coalesce(p_is_active, true),
+          (SELECT coalesce(max(sort_order) + 1, 0) FROM service_types))
+  ON CONFLICT (code) DO UPDATE
+     SET name = EXCLUDED.name, agent_title = EXCLUDED.agent_title, icon = EXCLUDED.icon, is_active = EXCLUDED.is_active
+  RETURNING * INTO v;
+  RETURN v;
+END $$;
+
+-- Coverage per type: services using it, agents who can do it (and free now), orders waiting for it.
+CREATE OR REPLACE FUNCTION fn_service_type_overview() RETURNS TABLE (
+  code TEXT, name TEXT, agent_title TEXT, icon TEXT, is_active BOOLEAN,
+  services INT, agents INT, agents_free INT, orders_waiting INT
+)
+LANGUAGE sql STABLE SET search_path FROM CURRENT AS $$
+  SELECT t.code::text, t.name::text, t.agent_title::text, t.icon::text, t.is_active,
+         (SELECT count(*) FROM services s WHERE s.skill_code = t.code)::int,
+         (SELECT count(*) FROM v_agents v WHERE v.status = 'active' AND t.code = ANY (v.skills))::int,
+         (SELECT count(*) FROM v_agents v WHERE v.state = 'free' AND t.code = ANY (v.skills))::int,
+         (SELECT count(*) FROM orders o WHERE o.status = 'placed' AND o.skill_code = t.code)::int
+    FROM service_types t
+   ORDER BY t.sort_order, t.name
+$$;
+
+-- Quick change of which type of agent does a service (from the admin services table).
+CREATE OR REPLACE PROCEDURE sp_set_service_skill(p_service_id INT, p_skill_code TEXT)
+LANGUAGE plpgsql SET search_path FROM CURRENT AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM service_types WHERE code = p_skill_code) THEN
+    RAISE EXCEPTION 'Unknown type of work' USING ERRCODE = '22023';
+  END IF;
+  UPDATE services SET skill_code = p_skill_code WHERE id = p_service_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Service not found' USING ERRCODE = 'P0002';
+  END IF;
+END $$;

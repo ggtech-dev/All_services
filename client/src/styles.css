@@ -296,3 +296,20 @@ input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 2
   .step-label { font-size: 11px; }
   .otp-box { width: 100%; }
 }
+
+/* ---------- agent types (skills) ---------- */
+.skill-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+.skill-picker button {
+  border: 1.5px solid var(--border); background: #fff; font: inherit; font-size: 14px; padding: 8px 12px;
+  border-radius: 999px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; transition: all .15s;
+}
+.skill-picker button:hover { border-color: var(--primary); }
+.skill-picker button.active { background: #eef2ff; border-color: var(--primary); color: var(--primary); font-weight: 600; }
+.skill-picker button.active::after { content: '✓'; }
+.skill-chip { display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #334155; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.skill-chip.small { font-size: 11px; padding: 2px 8px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.my-skills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.avail-where .skill-chip { align-self: flex-start; margin-top: 4px; }
+.gap-alert { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 10px 14px; border-radius: 10px; font-size: 14px; margin: 0; }
+.gap-alert a { color: var(--primary); font-weight: 600; }

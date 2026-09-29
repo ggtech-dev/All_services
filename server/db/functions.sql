@@ -179,16 +179,21 @@ END $$;
 -- ============ services ============
 
 -- Creates (p_id NULL) or updates a service and returns the row.
+-- p_skill_code: which type of agent does this service (plumbing, delivery, ...). NULL keeps the current one.
+DROP FUNCTION IF EXISTS fn_save_service(INT, INT, TEXT, TEXT, TEXT, TEXT, NUMERIC, TEXT, INT, BOOLEAN, BOOLEAN);
 CREATE OR REPLACE FUNCTION fn_save_service(
   p_id INT, p_category_id INT, p_name TEXT, p_description TEXT,
   p_image_url TEXT, p_image_credit TEXT, p_base_price NUMERIC, p_price_unit TEXT,
-  p_eta_minutes INT, p_requires_license BOOLEAN, p_is_active BOOLEAN
+  p_eta_minutes INT, p_requires_license BOOLEAN, p_is_active BOOLEAN, p_skill_code TEXT DEFAULT NULL
 ) RETURNS services
 LANGUAGE plpgsql SET search_path FROM CURRENT AS $$
 DECLARE
   v services;
   v_cat_slug TEXT;
 BEGIN
+  IF p_skill_code IS NOT NULL AND NOT EXISTS (SELECT 1 FROM service_types WHERE code = p_skill_code) THEN
+    RAISE EXCEPTION 'Choose which type of agent does this service' USING ERRCODE = '22023';
+  END IF;
   IF coalesce(trim(p_name), '') = '' THEN
     RAISE EXCEPTION 'Service name is required' USING ERRCODE = '22023';
   END IF;
@@ -205,12 +210,13 @@ BEGIN
 
   IF p_id IS NULL THEN
     INSERT INTO services (category_id, slug, name, description, image_url, image_credit, base_price,
-                          price_unit, eta_minutes, requires_license, is_active, sort_order)
+                          price_unit, eta_minutes, requires_license, is_active, sort_order, skill_code)
     VALUES (p_category_id, fn_unique_slug('services', v_cat_slug || '-' || p_name), trim(p_name), p_description,
             nullif(p_image_url, ''), nullif(p_image_credit, ''), coalesce(p_base_price, 0),
             nullif(trim(p_price_unit), ''), p_eta_minutes, coalesce(p_requires_license, false),
             coalesce(p_is_active, true),
-            (SELECT coalesce(max(sort_order) + 1, 0) FROM services WHERE category_id = p_category_id))
+            (SELECT coalesce(max(sort_order) + 1, 0) FROM services WHERE category_id = p_category_id),
+            coalesce(p_skill_code, 'general'))
     RETURNING * INTO v;
   ELSE
     UPDATE services
@@ -218,7 +224,7 @@ BEGIN
            image_url = nullif(p_image_url, ''), image_credit = nullif(p_image_credit, ''),
            base_price = coalesce(p_base_price, 0), price_unit = nullif(trim(p_price_unit), ''),
            eta_minutes = p_eta_minutes, requires_license = coalesce(p_requires_license, false),
-           is_active = coalesce(p_is_active, is_active)
+           is_active = coalesce(p_is_active, is_active), skill_code = coalesce(p_skill_code, skill_code)
      WHERE id = p_id
     RETURNING * INTO v;
     IF NOT FOUND THEN

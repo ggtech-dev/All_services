@@ -137,6 +137,7 @@ export function AgentProfile() {
           <dt>Email</dt><dd>{a.email || '—'}</dd>
           <dt>Vehicle</dt><dd>{VEHICLES[a.vehicle_type]} {a.vehicle_number}</dd>
           <dt>Area</dt><dd>{a.locality_name || '—'}</dd>
+          <dt>Types of work</dt><dd>{(a.skill_list || []).map((s) => `${s.icon} ${s.name}`).join(', ')}</dd>
           <dt>Pay per delivery</dt><dd>{rupees(me.stats.pay_per_order)}</dd>
         </dl>
       </section>

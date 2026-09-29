@@ -12,6 +12,17 @@ router.get('/localities', async (req, res, next) => {
   }
 });
 
+router.get('/service-types', async (req, res, next) => {
+  try {
+    const { rows } = await query(
+      'SELECT code, name, agent_title, icon FROM service_types WHERE is_active ORDER BY sort_order, name'
+    );
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/settings', async (req, res, next) => {
   try {
     const { rows } = await query('SELECT key, value FROM site_settings');

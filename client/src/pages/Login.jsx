@@ -5,7 +5,7 @@ import AuthLayout from './AuthLayout.jsx';
 
 const PORTALS = {
   user: { label: 'User', icon: '👤', title: 'Welcome back 👋', subtitle: 'Log in to book your next service', button: 'Login' },
-  agent: { label: 'Agent', icon: '🛵', title: 'Delivery agent login', subtitle: 'Go online, pick orders near you and track your earnings', button: 'Login to agent app' },
+  agent: { label: 'Agent', icon: '🛵', title: 'Agent login', subtitle: 'Go online, pick orders near you and track your earnings', button: 'Login to agent app' },
   admin: { label: 'Admin', icon: '🛡️', title: 'Admin login', subtitle: 'Manage services, prices and the customer app', button: 'Login to admin panel' },
 };
 const HOME = { user: '/', agent: '/agent', admin: '/admin' };
@@ -93,7 +93,7 @@ export default function Login() {
         </button>
       </form>
       {portal === 'user' && <p className="switch">New here? <Link to="/register">Create an account</Link></p>}
-      {portal === 'agent' && <p className="switch">Want to deliver with us? <Link to="/agent/apply">Apply as a delivery agent</Link></p>}
+      {portal === 'agent' && <p className="switch">Want to work with us? <Link to="/agent/apply">Apply as an agent</Link></p>}
       {portal === 'admin' && <p className="switch">Admin accounts are created by the system owner.</p>}
     </AuthLayout>
   );

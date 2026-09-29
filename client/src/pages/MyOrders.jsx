@@ -40,7 +40,7 @@ export default function MyOrders() {
               <p className="order-summary">{o.summary}</p>
               <small className="muted">
                 {when(o.created_at)}
-                {o.agent_name && ` · ${o.kind === 'service' ? 'Partner' : 'Agent'}: ${o.agent_name}`}
+                {o.agent_name && ` · ${o.agent_title || 'Agent'}: ${o.agent_name}`}
               </small>
             </div>
             <div className="order-row-side">

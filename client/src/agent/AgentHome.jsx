@@ -100,6 +100,11 @@ export default function AgentHome() {
         <button className="btn btn-ghost btn-sm" onClick={useMyLocation} disabled={busy}>🎯 Use my location</button>
       </div>
 
+      <div className="my-skills">
+        <small className="muted">You get orders for:</small>
+        {(me.agent.skill_list || []).map((s) => <span key={s.code} className="skill-chip">{s.icon} {s.name}</span>)}
+      </div>
+
       <div className="agent-stats">
         <div><small>Today</small><b>{s.today_deliveries}</b><small>deliveries</small></div>
         <div><small>Today</small><b>{rupees(s.today_earnings)}</b><small>earned</small></div>
@@ -112,7 +117,11 @@ export default function AgentHome() {
       {online && (
         <section>
           <h3 className="agent-h3">Orders near you <span className="muted">({available.length})</span></h3>
-          {!available.length && <div className="agent-empty">🕐 No open orders right now. New orders show up here automatically.</div>}
+          {!available.length && (
+            <div className="agent-empty">
+              🕐 No open {(me.agent.skill_list || []).map((s) => s.name).join(' / ')} orders right now. New orders show up here automatically.
+            </div>
+          )}
           {available.map((o) => (
             <article key={o.id} className="avail-card">
               <div className="avail-top">
@@ -120,6 +129,7 @@ export default function AgentHome() {
                 <div className="avail-where">
                   <b>{o.locality_name}{o.pincode && ` · ${o.pincode}`}</b>
                   <small className="muted">#{o.id} · {o.kind === 'service' ? 'Service visit' : `${o.item_count} item${o.item_count > 1 ? 's' : ''}`} · {time(o.created_at)}</small>
+                  <span className="skill-chip small">{o.skill_icon} {o.skill_name}</span>
                 </div>
                 <span className="earn">+{rupees(s.pay_per_order)}</span>
               </div>
