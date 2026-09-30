@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { api, getToken, setToken } from './api.js';
+import { AUTH_PROBLEM, api, getToken, setToken } from './api.js';
 
 const AuthContext = createContext(null);
 
@@ -13,6 +13,22 @@ export function AuthProvider({ children }) {
       .then((d) => setUser(d.user))
       .catch(() => setToken(null))
       .finally(() => setLoading(false));
+  }, []);
+
+  // The server said "not logged in" / "not allowed": find out who this tab really is now.
+  // (Expired login → back to the login page; different role → the route guards send us to the right app.)
+  useEffect(() => {
+    const recheck = () => {
+      if (!getToken()) return setUser(null);
+      api('/auth/me')
+        .then((d) => setUser(d.user))
+        .catch(() => {
+          setToken(null);
+          setUser(null);
+        });
+    };
+    window.addEventListener(AUTH_PROBLEM, recheck);
+    return () => window.removeEventListener(AUTH_PROBLEM, recheck);
   }, []);
 
   const handleAuth = (d) => {

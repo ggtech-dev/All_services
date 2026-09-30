@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, formatEta } from '../api.js';
 import { ImagePicker, Modal, PriceCell, RowImage, Switch, useLoad, useToast } from './ui.jsx';
+import { hourLabel } from '../qty.js';
 
 export const EMPTY_SERVICE = {
   skill_code: 'delivery', category_id: '', name: '', description: '', image_url: '', image_credit: '',
@@ -191,6 +192,10 @@ export function ServiceForm({ service, categories, onClose, onSaved }) {
     image_credit: service.image_credit || '',
     price_unit: service.price_unit || '',
     eta_minutes: service.eta_minutes ?? '',
+    price_on_bill: !!service.price_on_bill,
+    is_featured: !!service.is_featured,
+    window_from: service.window_from ?? '',
+    window_to: service.window_to ?? '',
   }));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -280,6 +285,32 @@ export function ServiceForm({ service, categories, onClose, onSaved }) {
           <Switch checked={form.is_active} onChange={(v) => setForm({ ...form, is_active: v })} label="Live (visible to customers)" />
           <Switch checked={form.requires_license} onChange={(v) => setForm({ ...form, requires_license: v })} label="Needs licensed partner" />
         </div>
+        <fieldset className="daily-options">
+          <legend>🌅 Daily service</legend>
+          <div className="form-row">
+            <label>
+              Delivery from
+              <select value={form.window_from} onChange={(e) => setForm({ ...form, window_from: e.target.value, window_to: e.target.value === '' ? '' : form.window_to })}>
+                <option value="">Any time</option>
+                {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{hourLabel(h)}</option>)}
+              </select>
+            </label>
+            <label>
+              Delivery until
+              <select value={form.window_to} onChange={set('window_to')} disabled={form.window_from === ''} required={form.window_from !== ''}>
+                <option value="">—</option>
+                {Array.from({ length: 24 }, (_, i) => i + 1).filter((h) => form.window_from === '' || h > Number(form.window_from)).map((h) => (
+                  <option key={h} value={h}>{hourLabel(h)}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <small className="muted">E.g. vegetables 6 AM – 10 AM: customers can only pick delivery slots in this time.</small>
+          <div className="form-row switches">
+            <Switch checked={form.price_on_bill} onChange={(v) => setForm({ ...form, price_on_bill: v })} label="Price as per shop bill (no fixed prices)" />
+            <Switch checked={form.is_featured} onChange={(v) => setForm({ ...form, is_featured: v })} label="Highlight on home page (Daily fresh)" />
+          </div>
+        </fieldset>
         {error && <div className="alert">{error}</div>}
       </form>
     </Modal>

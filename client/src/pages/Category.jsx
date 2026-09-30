@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, formatEta, formatPrice } from '../api.js';
 import SmartImage from '../components/SmartImage.jsx';
+import { windowLabel } from '../qty.js';
 
 export default function Category() {
   const { slug } = useParams();
@@ -38,16 +39,17 @@ export default function Category() {
 
       <div className="service-grid">
         {services.map((s) => (
-          <article key={s.id} className="service-card">
+          <article key={s.id} className={`service-card ${s.is_featured ? 'service-featured' : ''}`} style={{ '--accent': category.color }}>
             <div className="service-img">
               <SmartImage src={s.image_url} alt={s.name} credit={s.image_credit} fallbackIcon={category.icon} color={category.color} />
               {s.requires_license && <span className="tag">Licensed partner</span>}
+              {s.is_featured && <span className="tag tag-featured">⭐ Daily fresh</span>}
             </div>
             <div className="service-body">
               <h3>{s.name}</h3>
               <div className="service-meta">
-                <span className="price">{formatPrice(s.base_price, s.price_unit)}</span>
-                <span className="eta">⏱ {formatEta(s.eta_minutes)}</span>
+                <span className="price">{s.price_on_bill ? 'Market price' : formatPrice(s.base_price, s.price_unit)}</span>
+                <span className="eta">{s.window_from != null ? `🕕 ${windowLabel(s.window_from, s.window_to)}` : `⏱ ${formatEta(s.eta_minutes)}`}</span>
               </div>
               {s.product_count > 0 ? (
                 <Link to={`/service/${s.slug}`} className="btn btn-primary btn-sm btn-center" style={{ '--accent': category.color }}>

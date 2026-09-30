@@ -41,7 +41,7 @@ app.use('/api', catalogRoutes);
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 
 // PostgreSQL errors raised by our functions/procedures carry user-facing messages.
-const PG_STATUS = { '22023': 400, '22P02': 400, P0002: 404, '55000': 409, '23505': 409, '23503': 409 };
+const PG_STATUS = { '22023': 400, '22P02': 400, '22007': 400, '22008': 400, P0002: 404, '55000': 409, '23505': 409, '23503': 409 };
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
@@ -51,6 +51,8 @@ app.use((err, req, res, next) => {
   if (PG_STATUS[err.code]) {
     const messages = {
       '22P02': 'Invalid value',
+      '22007': 'Invalid date',
+      '22008': 'Invalid date',
       '23505': 'That name is already in use',
       '23503': 'This item is in use and cannot be deleted',
     };

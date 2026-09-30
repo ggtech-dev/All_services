@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api, apiFile } from '../api.js';
 import { rupees, time } from '../orderStatus.jsx';
+import PhotoPicker from './PhotoPicker.jsx';
+import QrScanner, { readUpiQrFile } from './QrScanner.jsx';
+import { doorPayment } from './DeliveryCharge.jsx';
+import { useSettings } from '../settings.js';
 
 // ---------- helpers ----------
 
@@ -34,26 +38,6 @@ export const upiLink = (order) =>
   `upi://pay?pa=${order.shop_upi_id}&pn=${encodeURIComponent(order.shop_name || 'Shop')}` +
   `&am=${Number(order.bill_amount).toFixed(2)}&cu=INR&tn=${encodeURIComponent(`All Services order ${order.id}`)}`;
 
-// Reads a UPI QR photo: returns { upiId, name } or null. The QR library is loaded only when needed.
-async function readUpiQr(file) {
-  const [{ default: jsQR }, bitmap] = await Promise.all([import('jsqr'), createImageBitmap(file)]);
-  const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const code = jsQR(img.data, img.width, img.height);
-  if (!code?.data?.toLowerCase().startsWith('upi://')) return null;
-  const params = new URL(code.data.replace(/^upi:\/\//i, 'https://upi/')).searchParams;
-  return params.get('pa') ? { upiId: params.get('pa'), name: params.get('pn') || '' } : null;
-}
-
-// Cash the agent collects at the door.
-export const cashToCollect = (o) =>
-  Number(o.total) - (o.bill_payment_mode === 'customer_upi' ? Number(o.bill_amount || 0) : 0);
-
 // ---------- agent: at the shop ----------
 export function AgentShopBill({ order, busy, run }) {
   const [open, setOpen] = useState(false);
@@ -61,6 +45,8 @@ export function AgentShopBill({ order, busy, run }) {
   const [billFile, setBillFile] = useState(null);
   const [qrFile, setQrFile] = useState(null);
   const [qrMsg, setQrMsg] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const [formError, setFormError] = useState('');
   const hasBill = !!order.bill_uploaded_at;
   const upi = order.bill_payment_mode === 'customer_upi';
   const base = `/agent/orders/${order.id}`;
@@ -75,6 +61,7 @@ export function AgentShopBill({ order, busy, run }) {
     setBillFile(null);
     setQrFile(null);
     setQrMsg('');
+    setFormError('');
     setOpen(true);
   };
 
@@ -83,7 +70,7 @@ export function AgentShopBill({ order, busy, run }) {
     if (!file) return;
     setQrMsg('Reading QR…');
     try {
-      const r = await readUpiQr(file);
+      const r = await readUpiQrFile(file);
       if (r) {
         setForm((f) => ({ ...f, upi_id: r.upiId, shop_name: f.shop_name || r.name }));
         setQrMsg(`✓ Read from QR: ${r.upiId}${r.name ? ` (${r.name})` : ''}`);
@@ -95,8 +82,18 @@ export function AgentShopBill({ order, busy, run }) {
     }
   };
 
+  // Live scan found the QR: keep the frame as the QR photo and fill in the UPI details.
+  const onScanned = ({ file, upiId, name }) => {
+    setScanning(false);
+    setQrFile(file);
+    setForm((f) => ({ ...f, upi_id: upiId, shop_name: f.shop_name || name }));
+    setQrMsg(`✓ Scanned: ${upiId}${name ? ` (${name})` : ''}`);
+  };
+
   const submit = (e) => {
     e.preventDefault();
+    setFormError('');
+    if (!hasBill && !billFile) return setFormError('Add a photo of the bill');
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
     if (billFile) fd.append('bill_photo', billFile);
@@ -115,26 +112,23 @@ export function AgentShopBill({ order, busy, run }) {
           <label>Bill amount (₹) *<input type="number" min="1" step="any" inputMode="decimal" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required autoFocus /></label>
           <label>Shop name<input value={form.shop_name} onChange={(e) => setForm({ ...form, shop_name: e.target.value })} placeholder="e.g. Sri Balaji Kirana" /></label>
         </div>
-        <label className="file-pick">
-          📷 {billFile ? `Bill photo: ${billFile.name}` : hasBill ? 'Replace bill photo (optional)' : 'Take photo of the bill *'}
-          <input type="file" accept="image/*" capture="environment" required={!hasBill} onChange={(e) => setBillFile(e.target.files?.[0] || null)} />
-        </label>
+        <PhotoPicker label={hasBill ? 'Bill photo' : 'Bill photo *'} file={billFile} onFile={setBillFile} hasExisting={hasBill} />
         <div className="seg">
           <button type="button" className={form.mode === 'customer_upi' ? 'active' : ''} onClick={() => setForm({ ...form, mode: 'customer_upi' })}>📱 Customer pays shop (UPI)</button>
           <button type="button" className={form.mode === 'agent_cash' ? 'active' : ''} onClick={() => setForm({ ...form, mode: 'agent_cash' })}>💵 I paid cash</button>
         </div>
         {form.mode === 'customer_upi' ? (
           <>
-            <label className="file-pick">
-              🔳 {qrFile ? `QR photo: ${qrFile.name}` : order.has_shop_qr ? 'Replace shop QR photo (optional)' : "Photo of the shop's UPI scanner"}
-              <input type="file" accept="image/*" capture="environment" onChange={(e) => onQr(e.target.files?.[0] || null)} />
-            </label>
+            <button type="button" className="btn btn-primary btn-block scan-btn" onClick={() => setScanning(true)}>🔳 Scan shop's UPI QR (live camera)</button>
+            <PhotoPicker label="…or a photo of the shop's QR" file={qrFile} onFile={onQr} hasExisting={order.has_shop_qr} />
+            {scanning && <QrScanner onResult={onScanned} onClose={() => setScanning(false)} />}
             {qrMsg && <small className={qrMsg.startsWith('✓') ? 'success-text' : 'muted'}>{qrMsg}</small>}
             <label>Shop UPI ID<input value={form.upi_id} onChange={(e) => setForm({ ...form, upi_id: e.target.value.trim() })} placeholder="e.g. balajikirana@okaxis" autoCapitalize="none" /></label>
           </>
         ) : (
           <small className="muted">You paid the shop. The customer pays you {form.amount ? rupees(Number(form.amount) + Number(order.delivery_fee)) : 'the bill + delivery fee'} on delivery.</small>
         )}
+        {formError && <div className="alert">{formError}</div>}
         <div className="shop-bill-actions">
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>Cancel</button>
           <button className="btn btn-primary btn-sm" disabled={busy}>{form.mode === 'customer_upi' ? 'Send bill to customer' : 'Save bill'}</button>
@@ -255,10 +249,7 @@ export function CustomerShopBill({ order, onChanged }) {
           </div>
           <form className="form proof-form" onSubmit={submit}>
             <b>After paying, upload the payment screenshot</b>
-            <label className="file-pick">
-              📎 {file ? file.name : 'Choose screenshot'}
-              <input type="file" accept="image/*" required onChange={(e) => setFile(e.target.files?.[0] || null)} />
-            </label>
+            <PhotoPicker label="Payment screenshot" file={file} onFile={setFile} cameraFirst={false} />
             <label>UPI reference / UTR (optional)<input value={ref} onChange={(e) => setRef(e.target.value.replace(/\s/g, ''))} placeholder="12-digit number from your payment app" inputMode="numeric" /></label>
             {error && <div className="alert">{error}</div>}
             <button className="btn btn-primary" disabled={busy || !file}>{busy ? 'Sending…' : "I've paid — send screenshot"}</button>
@@ -280,6 +271,7 @@ export function CustomerShopBill({ order, onChanged }) {
 
 // ---------- admin: everything about the shop bill ----------
 export function AdminShopBill({ order }) {
+  const settings = useSettings();
   if (!order.bill_uploaded_at) return null;
   const base = `/admin/orders/${order.id}/files`;
   const upi = order.bill_payment_mode === 'customer_upi';
@@ -298,7 +290,7 @@ export function AdminShopBill({ order }) {
           <dt>Paid by</dt><dd>{upi ? `Customer → shop UPI ${order.shop_upi_id || (order.shop_details_cleared_at ? '(removed after delivery)' : '')}` : 'Agent paid cash; customer pays agent'}</dd>
           {upi && <><dt>Customer paid</dt><dd>{order.customer_paid_at ? `${time(order.customer_paid_at)}${order.payment_ref ? ` · ref ${order.payment_ref}` : ''}` : '—'}</dd></>}
           {upi && <><dt>Shop confirmed</dt><dd>{order.payment_confirmed_at ? time(order.payment_confirmed_at) : 'Not yet'}</dd></>}
-          <dt>Agent collects</dt><dd>{rupees(cashToCollect(order))}</dd>
+          <dt>Agent collects (cash)</dt><dd>{rupees(doorPayment(order, settings).cash)}</dd>
         </dl>
       </div>
     </section>

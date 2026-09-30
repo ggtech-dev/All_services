@@ -186,7 +186,10 @@ export function ProductForm({ product, services, onClose, onSaved }) {
     image_url: product.image_url || '',
     image_credit: product.image_credit || '',
     unit: product.unit || '',
+    sell_by: product.sell_by || 'pack',
+    note_options: product.note_options || [],
   }));
+  const [cuts, setCuts] = useState(() => (product.note_options || []).join(', '));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -205,7 +208,7 @@ export function ProductForm({ product, services, onClose, onSaved }) {
     try {
       const saved = await api(isNew ? '/admin/products' : `/admin/products/${product.id}`, {
         method: isNew ? 'POST' : 'PUT',
-        body: form,
+        body: { ...form, note_options: cuts.split(',').map((c) => c.trim()).filter(Boolean) },
       });
       onSaved(saved, isNew);
     } catch (err) {
@@ -267,6 +270,23 @@ export function ProductForm({ product, services, onClose, onSaved }) {
           Description
           <textarea rows={2} value={form.description} onChange={set('description')} placeholder="Optional details shown to customers" />
         </label>
+        <div className="form-row">
+          <label>
+            Customer chooses
+            <select value={form.sell_by} onChange={set('sell_by')}>
+              <option value="pack">Number of packs (1, 2, 3…)</option>
+              <option value="kg">Weight in kg (250 g steps)</option>
+              <option value="litre">Litres (500 ml steps)</option>
+              <option value="bunch">Bunches</option>
+              <option value="piece">Pieces</option>
+            </select>
+          </label>
+          <label>
+            Cutting options
+            <input value={cuts} onChange={(e) => setCuts(e.target.value)} placeholder="e.g. Curry cut, Boneless, Fry pieces" />
+            <small className="muted">Comma separated. Customers tap one or more (meat / fish). Leave empty if not needed.</small>
+          </label>
+        </div>
         <div className="form-row switches">
           <Switch checked={form.in_stock} onChange={(v) => setForm({ ...form, in_stock: v })} label="In stock" />
           <Switch checked={form.is_active} onChange={(v) => setForm({ ...form, is_active: v })} label="Live (visible to customers)" />

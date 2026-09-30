@@ -53,7 +53,8 @@ export default function Promotions() {
       .then((d) => {
         setData(d);
         const ids = [...d.carousel, ...d.tiles].map((p) => p.id);
-        if (ids.length) api('/promotions/seen', { method: 'POST', body: { ids } }).catch(() => {});
+        // keepalive: the view still counts if the customer taps away straight after the page opens
+        if (ids.length) fetch('/api/promotions/seen', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) }).catch(() => {});
       })
       .catch(() => setData({ carousel: [], tiles: [] }));
   }, []);

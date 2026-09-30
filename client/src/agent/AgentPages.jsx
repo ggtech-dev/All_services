@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
+import { CompanyQr } from '../components/DeliveryCharge.jsx';
 import { StatusBadge, VEHICLES, rupees, when } from '../orderStatus.jsx';
 import AccountSecurity from '../components/AccountSecurity.jsx';
 
@@ -115,6 +116,22 @@ export function AgentWallet() {
             <b className={TYPE[e.type].cls}>{TYPE[e.type].sign}{rupees(e.amount)}</b>
           </div>
         ))}
+      </section>
+    </div>
+  );
+}
+
+// ---------- company UPI QR: customers pay the delivery charge to it ----------
+export function AgentPayQr() {
+  return (
+    <div className="agent-stack">
+      <section className="panel pay-qr-page">
+        <h2>🔳 Company UPI QR</h2>
+        <p className="muted small">
+          At the door, show this to the customer. They pay the delivery charge to All Services and show you the
+          payment success screen. Then tap <b>“Received on company UPI”</b> in your order.
+        </p>
+        <CompanyQr big />
       </section>
     </div>
   );

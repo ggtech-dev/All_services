@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-const HYDERABAD = [17.385, 78.4867];
+const SIDDIPET = [18.1018, 78.852]; // launch city; maps zoom to their markers anyway
 
 // Free OpenStreetMap tiles. For heavy traffic, swap TILE_URL for a free-tier provider (MapTiler, Stadia).
 const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -23,20 +23,27 @@ const emojiIcon = (emoji, color, pulse) =>
  *  path:    [[lat, lng], ...] drawn as a line (e.g. the agent's trail)
  *  fitKey:  when this value changes the map zooms to show all markers + path (so polling doesn't fight the user's panning)
  *  focus:   { lat, lng, zoom } to fly to
+ *  onMapClick: ({ lat, lng }) => … when the map itself is tapped (e.g. to place a pin)
  */
-export default function MapView({ markers = [], path = [], fitKey, focus, height = 320, className = '' }) {
+export default function MapView({ markers = [], path = [], fitKey, focus, height = 320, className = '', onMapClick }) {
+  const clickRef = useRef(onMapClick);
+  clickRef.current = onMapClick;
   const box = useRef(null);
   const map = useRef(null);
   const layer = useRef(null);
 
   useEffect(() => {
-    map.current = L.map(box.current, { zoomControl: true, attributionControl: true }).setView(HYDERABAD, 12);
+    map.current = L.map(box.current, { zoomControl: true, attributionControl: true }).setView(SIDDIPET, 13);
     L.tileLayer(TILE_URL, { maxZoom: 19, attribution: ATTRIBUTION }).addTo(map.current);
     layer.current = L.layerGroup().addTo(map.current);
+    map.current.on('click', (e) => clickRef.current?.({ lat: +e.latlng.lat.toFixed(6), lng: +e.latlng.lng.toFixed(6) }));
     // The map may be created inside a modal/panel that is still animating: re-measure shortly after.
     const t = setTimeout(() => map.current?.invalidateSize(), 250);
     return () => {
       clearTimeout(t);
+      // Stop any pan/zoom first: removing a map mid-animation makes Leaflet throw (_leaflet_pos).
+      map.current.off();
+      map.current.stop();
       map.current.remove();
       map.current = null;
     };
@@ -66,8 +73,9 @@ export default function MapView({ markers = [], path = [], fitKey, focus, height
   useEffect(() => {
     if (!map.current) return;
     const pts = [...markers.filter((m) => m.lat != null).map((m) => [m.lat, m.lng]), ...path];
-    if (pts.length === 1) map.current.setView(pts[0], 15);
-    else if (pts.length > 1) map.current.fitBounds(L.latLngBounds(pts), { padding: [40, 40], maxZoom: 16 });
+    // No animation: the map may close right after (e.g. admin taps a pin and saves at once).
+    if (pts.length === 1) map.current.setView(pts[0], 15, { animate: false });
+    else if (pts.length > 1) map.current.fitBounds(L.latLngBounds(pts), { padding: [40, 40], maxZoom: 16, animate: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitKey]);
 

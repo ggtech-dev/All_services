@@ -426,7 +426,7 @@ input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 2
 .pay-status.waiting { background: #fffbeb; color: #92400e; }
 .pay-status.paid { background: #f0fdf4; color: #166534; }
 .customer-bill { display: flex; flex-direction: column; gap: 14px; }
-.customer-bill.attention { border: 2px solid #f59e0b; box-shadow: 0 0 0 4px rgba(245, 158, 11, .15); }
+.customer-bill.attention, .fee-card.attention { border: 2px solid #f59e0b; box-shadow: 0 0 0 4px rgba(245, 158, 11, .15); }
 .pay-box { display: flex; flex-direction: column; gap: 12px; }
 .upi-btn { font-size: 17px; padding: 14px; --accent: #16a34a; }
 .pay-alt { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
@@ -440,3 +440,82 @@ input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 2
 .admin-bill-photos { display: flex; gap: 10px; }
 .admin-bill-photos figure { margin: 0; display: flex; flex-direction: column; gap: 4px; align-items: center; font-size: 12px; color: var(--muted); }
 @media (max-width: 700px) { .admin-bill-grid { grid-template-columns: 1fr; } }
+
+/* ---------- photo picker & live QR scanner ---------- */
+.photo-picker { display: flex; gap: 12px; align-items: center; border: 2px dashed var(--border); border-radius: 12px; padding: 10px; }
+.photo-picker.has-file { border-style: solid; border-color: #16a34a; background: #f0fdf4; }
+.photo-picker-preview { width: 58px; height: 58px; border-radius: 10px; background: #f1f5f9; display: grid; place-items: center; overflow: hidden; flex-shrink: 0; font-size: 22px; }
+.photo-picker-preview img { width: 100%; height: 100%; object-fit: cover; }
+.photo-picker-body { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 14px; }
+.photo-picker-body small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.photo-picker-buttons { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.scan-btn { --accent: #0f172a; }
+.qr-scanner { position: fixed; inset: 0; z-index: 80; background: rgba(0, 0, 0, .85); display: grid; place-items: center; padding: 16px; }
+.qr-scanner-box { position: relative; width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.qr-scanner video { width: 100%; border-radius: 16px; background: #000; aspect-ratio: 3 / 4; object-fit: cover; }
+.qr-frame { position: absolute; top: 18%; left: 18%; width: 64%; aspect-ratio: 1; border: 3px solid #22c55e; border-radius: 16px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, .25); pointer-events: none; }
+.qr-scanner-status { color: #fff; text-align: center; margin: 0; font-weight: 600; }
+.qr-scanner-error { color: #fff; background: #7f1d1d; padding: 14px; border-radius: 12px; margin: 0; }
+.qr-scanner-close { background: #fff; }
+
+/* ---------- delivery charge: company UPI QR ---------- */
+.stack-sm { display: flex; flex-direction: column; gap: 10px; }
+.company-qr { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.company-qr img { width: 180px; height: 180px; object-fit: contain; background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 6px; }
+.company-qr-big img { width: min(78vw, 320px); height: auto; aspect-ratio: 1; }
+.company-qr-missing { width: 180px; height: 180px; display: grid; place-items: center; font-size: 60px; background: #f1f5f9; border-radius: 12px; }
+.company-qr code { font-size: 14px; background: #f1f5f9; padding: 2px 8px; border-radius: 6px; word-break: break-all; }
+.company-qr-amount { margin-top: 6px; font-size: 16px; background: #eef2ff; color: var(--primary); padding: 6px 14px; border-radius: 999px; }
+.company-qr-amount b { font-size: 20px; }
+.company-qr-sheet { background: #fff; border-radius: 18px; padding: 18px; width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 10px; text-align: center; }
+.pay-qr-page { text-align: center; display: flex; flex-direction: column; gap: 10px; }
+.pay-qr-page h2 { margin: 0; }
+
+.door-pay { display: flex; flex-direction: column; gap: 10px; }
+.fee-box { border: 2px solid #c7d2fe; background: #f5f7ff; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.fee-box.fee-paid { border-color: #bbf7d0; background: #f0fdf4; }
+.fee-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 15px; }
+.fee-head b:last-child { font-size: 18px; }
+.fee-done { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fee-actions { display: flex; flex-direction: column; gap: 8px; }
+.fee-actions .link-btn { align-self: center; }
+.fee-card { display: flex; flex-direction: column; gap: 8px; }
+.fee-card.fee-paid { background: #f0fdf4; color: #166534; font-weight: 600; }
+.fee-card p { margin: 0; }
+
+/* ---------- daily fresh: vegetables, meat & fish, milk ---------- */
+.daily-fresh { display: flex; flex-direction: column; gap: 12px; margin: 8px 0 26px; }
+.daily-fresh-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.daily-fresh-head h2 { margin: 0; font-size: 22px; }
+.daily-fresh-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.fresh-card { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); border: 2px solid transparent; transition: transform .2s, border-color .2s; color: inherit; }
+.fresh-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+/* position: relative keeps the ⓘ photo-credit badge inside the photo */
+.fresh-img { position: relative; height: 150px; overflow: hidden; background: #e2e8f0; }
+.fresh-img img, .fresh-img .img-fallback { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fresh-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
+.fresh-body h3 { margin: 0; font-size: 17px; }
+.fresh-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fresh-chips span, .fact-chip { font-size: 12px; font-weight: 600; background: #f0fdf4; color: #166534; padding: 3px 9px; border-radius: 999px; }
+.fresh-cta { font-weight: 700; color: var(--accent); font-size: 14px; }
+@media (max-width: 720px) {
+  .daily-fresh-grid { grid-template-columns: 1fr; gap: 10px; }
+  .fresh-card { flex-direction: row; }
+  .fresh-img { width: 112px; height: auto; min-height: 104px; flex-shrink: 0; }
+}
+
+.service-featured { outline: 2px solid var(--accent); }
+.tag-featured { left: auto; right: 10px; background: #f59e0b; color: #1f2937; font-weight: 700; }
+.shop-facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.market-note { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 12px; padding: 10px 14px; font-size: 14px; margin: 0 0 16px; }
+.market-price { font-size: 12px; font-weight: 700; color: #b45309; white-space: nowrap; }
+.product-foot:has(.stepper-wide) { flex-wrap: wrap; gap: 6px; }
+.stepper-wide span { min-width: 58px; font-size: 13px; }
+.item-note { display: block; color: #b45309; font-weight: 600; }
+
+.cut-chooser { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.cut-chooser small { font-weight: 600; color: var(--muted); }
+.cut-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cut-chips button { border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+.cut-chips button.active { background: var(--accent, var(--primary)); border-color: var(--accent, var(--primary)); color: #fff; }
+.cut-chooser input { font-size: 13px; padding: 6px 10px; }

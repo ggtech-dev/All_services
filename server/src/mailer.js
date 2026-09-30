@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import 'dotenv/config';
+import { query } from './db.js';
 
 // Sends email through any SMTP server (Brevo, Gmail, Resend, Amazon SES...). Configure in .env:
 //   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM
@@ -26,7 +27,7 @@ const PURPOSE = {
 
 const escape = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-function otpHtml({ name, code, purpose, minutes }) {
+function otpHtml({ name, code, purpose, minutes, city }) {
   const p = PURPOSE[purpose];
   return `<!doctype html><html><body style="margin:0;background:#f5f7fb;font-family:Segoe UI,Arial,sans-serif;color:#0f172a">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px"><tr><td align="center">
@@ -39,7 +40,7 @@ function otpHtml({ name, code, purpose, minutes }) {
         <p style="margin:0 0 8px;color:#64748b;font-size:14px">This code expires in ${minutes} minutes. Never share it with anyone — All Services staff will never ask for it.</p>
         <p style="margin:0;color:#64748b;font-size:14px">Didn't ask for this? You can safely ignore this email.</p>
       </td></tr>
-      <tr><td style="padding:14px 24px;background:#f8fafc;color:#94a3b8;font-size:12px">All Services · Hyderabad, Telangana</td></tr>
+      <tr><td style="padding:14px 24px;background:#f8fafc;color:#94a3b8;font-size:12px">All Services · ${escape(city)}</td></tr>
     </table>
   </td></tr></table></body></html>`;
 }
@@ -51,5 +52,6 @@ export async function sendOtpEmail({ to, name, code, purpose, minutes = 10 }) {
     console.log(`\n📧 [TEST MODE — email not sent] To: ${to}\n   ${p.subject}\n   CODE: ${code}\n`);
     return;
   }
-  await transport.sendMail({ from: FROM, to, subject: p.subject, text, html: otpHtml({ name, code, purpose, minutes }) });
+  const city = (await query("SELECT value FROM site_settings WHERE key = 'service_city'").catch(() => ({ rows: [] }))).rows[0]?.value || 'Telangana';
+  await transport.sendMail({ from: FROM, to, subject: p.subject, text, html: otpHtml({ name, code, purpose, minutes, city }) });
 }

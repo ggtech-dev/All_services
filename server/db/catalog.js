@@ -32,6 +32,9 @@ export const categories = [
     description: 'Groceries, fresh produce and daily essentials, delivered fast.',
     image: 'grocery,store',
     services: [
+      ['Fresh Vegetables', 'fresh,vegetables', 0, 'as per market price', 60],
+      ['Daily Fresh Meat & Fish', 'fresh,meat', 0, 'as per market price', 60],
+      ['Fresh Milk', 'fresh,milk', 0, 'organic & packet milk', 60],
       ['Kirana Delivery', 'grocery', 0, 'free delivery', 30],
       ['Vegetable Delivery', 'vegetables', 0, 'free delivery', 30],
       ['Fruit Delivery', 'fruits', 0, 'free delivery', 30],
@@ -136,7 +139,58 @@ export const categories = [
 
 // Seed products inside services, keyed by "<category slug>/<service name>".
 // Each product: [name, brand, unit, price (₹), MRP (₹) or null, emoji shown until a photo is uploaded]
+// Items: [name, brand, unit, price, mrp, emoji, sold by, photo keyword, cutting options]
+//  - sold by: 'pack' (default, count), 'kg' (250 g steps), 'litre' (500 ml steps), 'bunch', 'piece'
+//  - price 0 in a "price as per shop bill" service: the agent buys at the market and uploads the bill.
 export const products = {
+  'food-daily/Fresh Vegetables': [
+    ['Tomato (Tamata)', '', 'per kg', 0, null, '🍅', 'kg', 'veg:tomato'],
+    ['Onion (Ullipaya)', '', 'per kg', 0, null, '🧅', 'kg', 'veg:onion'],
+    ['Potato (Bangaladumpa)', '', 'per kg', 0, null, '🥔', 'kg', 'veg:potato'],
+    ['Brinjal (Vankaya)', '', 'per kg', 0, null, '🍆', 'kg', 'veg:brinjal'],
+    ["Lady's Finger (Bendakaya)", '', 'per kg', 0, null, '🫛', 'kg', 'veg:okra'],
+    ['Green Chillies (Pachi Mirchi)', '', 'per kg', 0, null, '🌶️', 'kg', 'veg:green-chilli'],
+    ['Carrot', '', 'per kg', 0, null, '🥕', 'kg', 'veg:carrot'],
+    ['French Beans', '', 'per kg', 0, null, '🫛', 'kg', 'veg:beans'],
+    ['Cabbage (Kosu)', '', 'per kg', 0, null, '🥬', 'kg', 'veg:cabbage'],
+    ['Cauliflower (Gobi)', '', 'per kg', 0, null, '🥦', 'kg', 'veg:cauliflower'],
+    ['Bottle Gourd (Sorakaya)', '', 'per kg', 0, null, '🥒', 'kg', 'veg:bottle-gourd'],
+    ['Ridge Gourd (Beerakaya)', '', 'per kg', 0, null, '🥒', 'kg', 'veg:ridge-gourd'],
+    ['Bitter Gourd (Kakarakaya)', '', 'per kg', 0, null, '🥒', 'kg', 'veg:bitter-gourd'],
+    ['Drumsticks (Munagakaya)', '', 'per kg', 0, null, '🥢', 'kg', 'veg:drumstick'],
+    ['Capsicum', '', 'per kg', 0, null, '🫑', 'kg', 'veg:capsicum'],
+    ['Cucumber (Dosakaya)', '', 'per kg', 0, null, '🥒', 'kg', 'veg:cucumber'],
+    ['Beetroot', '', 'per kg', 0, null, '🟣', 'kg', 'veg:beetroot'],
+    ['Ginger (Allam)', '', 'per kg', 0, null, '🫚', 'kg', 'veg:ginger'],
+    ['Garlic (Vellulli)', '', 'per kg', 0, null, '🧄', 'kg', 'veg:garlic'],
+    ['Raw Banana (Aratikaya)', '', 'per kg', 0, null, '🍌', 'kg', 'veg:raw-banana'],
+    ['Palak (Palakura)', '', 'per bunch', 0, null, '🥬', 'bunch', 'veg:spinach'],
+    ['Gongura', '', 'per bunch', 0, null, '🌿', 'bunch', 'veg:gongura'],
+    ['Methi (Menthikura)', '', 'per bunch', 0, null, '🌿', 'bunch', 'veg:methi'],
+    ['Coriander (Kothimeera)', '', 'per bunch', 0, null, '🌿', 'bunch', 'veg:coriander'],
+    ['Curry Leaves (Karivepaku)', '', 'per bunch', 0, null, '🌿', 'bunch', 'veg:curry-leaves'],
+    ['Mint (Pudina)', '', 'per bunch', 0, null, '🌿', 'bunch', 'veg:mint'],
+  ],
+  'food-daily/Daily Fresh Meat & Fish': [
+    ['Chicken – Skinless', '', 'per kg', 0, null, '🍗', 'kg', 'meat:chicken', ['Curry cut', 'Biryani cut', 'Small pieces', 'Big pieces', 'Boneless']],
+    ['Chicken – With Skin', '', 'per kg', 0, null, '🍗', 'kg', 'meat:chicken-skin', ['Curry cut', 'Biryani cut', 'Small pieces', 'Big pieces', 'Boneless']],
+    ['Boneless Chicken', '', 'per kg', 0, null, '🍗', 'kg', 'meat:boneless-chicken', ['Small pieces', 'Big pieces', 'Strips']],
+    ['Country Chicken (Natu Kodi)', '', 'per kg', 0, null, '🐓', 'kg', 'meat:country-chicken', ['Curry cut', 'Biryani cut', 'Small pieces', 'Big pieces', 'Boneless']],
+    ['Mutton (Goat)', '', 'per kg', 0, null, '🥩', 'kg', 'meat:mutton', ['Curry cut', 'Biryani cut', 'With bones', 'Boneless', 'Keema']],
+    ['Mutton Keema', '', 'per kg', 0, null, '🥩', 'kg', 'meat:keema'],
+    ['Prawns (Royyalu)', '', 'per kg', 0, null, '🦐', 'kg', 'meat:prawns', ['Cleaned & deveined', 'Shell on', 'Remove head']],
+    ['Rohu Fish (Bocha)', '', 'per kg', 0, null, '🐟', 'kg', 'meat:rohu', ['Curry pieces', 'Fry pieces', 'Whole (cleaned)', 'Remove head', 'Keep head']],
+    ['Katla Fish', '', 'per kg', 0, null, '🐟', 'kg', 'meat:katla', ['Curry pieces', 'Fry pieces', 'Whole (cleaned)', 'Remove head', 'Keep head']],
+    ['Murrel Fish (Korameenu)', '', 'per kg', 0, null, '🐟', 'kg', 'meat:murrel', ['Curry pieces', 'Fry pieces', 'Whole (cleaned)', 'Remove head', 'Keep head']],
+    ['Tilapia Fish', '', 'per kg', 0, null, '🐟', 'kg', 'meat:tilapia', ['Curry pieces', 'Fry pieces', 'Whole (cleaned)', 'Remove head', 'Keep head']],
+  ],
+  'food-daily/Fresh Milk': [
+    ['Fresh Organic Cow Milk', '', 'per litre', 80, null, '🥛', 'litre', 'milk:cow'],
+    ['Fresh Organic Buffalo Milk', '', 'per litre', 90, null, '🥛', 'litre', 'milk:buffalo'],
+    ['Vijaya Toned Milk (packet)', 'Vijaya', '500 ml', 28, 28, '🥛', 'pack', 'milk:packet'],
+    ['Vijaya Full Cream Milk (packet)', 'Vijaya', '500 ml', 34, 34, '🥛', 'pack', 'milk:packet'],
+    ['Heritage Toned Milk (packet)', 'Heritage', '500 ml', 29, 29, '🥛', 'pack', 'milk:packet'],
+  ],
   'home-services/Drinking Water Delivery (20L cans, bottles)': [
     ['Water Can Refill', '', '20 L', 40, null, '💧'],
     ['Bisleri Water Can', 'Bisleri', '20 L', 110, 120, '💧'],
@@ -223,30 +277,25 @@ export const products = {
   ],
 };
 
-// Hyderabad areas: [name, pincode, lat, lng]. Used for addresses and to find the nearest agent/order.
+// Launch city: Siddipet, Telangana. [name, pincode, lat, lng] — used for addresses and to find the nearest agent/order.
+// Locations are approximate; the admin can rename, move (tap the map), add or switch off areas in Admin → Service areas.
 export const localities = [
-  ['Ameerpet', '500016', 17.4375, 78.4483],
-  ['Attapur', '500048', 17.3700, 78.4300],
-  ['Banjara Hills', '500034', 17.4126, 78.4392],
-  ['Begumpet', '500016', 17.4447, 78.4664],
-  ['Charminar', '500002', 17.3616, 78.4747],
-  ['Dilsukhnagar', '500060', 17.3688, 78.5247],
-  ['Gachibowli', '500032', 17.4401, 78.3489],
-  ['Himayatnagar', '500029', 17.4015, 78.4867],
-  ['Hitech City', '500081', 17.4435, 78.3772],
-  ['Jubilee Hills', '500033', 17.4326, 78.4071],
-  ['Kompally', '500014', 17.5360, 78.4850],
-  ['Kondapur', '500084', 17.4700, 78.3570],
-  ['Kukatpally', '500072', 17.4849, 78.4138],
-  ['LB Nagar', '500074', 17.3457, 78.5522],
-  ['Madhapur', '500081', 17.4483, 78.3915],
-  ['Manikonda', '500089', 17.4050, 78.3860],
-  ['Mehdipatnam', '500028', 17.3950, 78.4353],
-  ['Miyapur', '500049', 17.4968, 78.3614],
-  ['Secunderabad', '500003', 17.4399, 78.4983],
-  ['Shamshabad', '501218', 17.2403, 78.4294],
-  ['Tarnaka', '500017', 17.4281, 78.5379],
-  ['Uppal', '500039', 17.4018, 78.5602],
+  ['Old Bus Stand', '502103', 18.1043, 78.8498],
+  ['New Bus Stand', '502103', 18.0985, 78.8551],
+  ['Komati Cheruvu', '502103', 18.0957, 78.8466],
+  ['Bharath Nagar', '502103', 18.1072, 78.8545],
+  ['Prashanth Nagar', '502103', 18.0962, 78.8589],
+  ['Hanuman Nagar', '502103', 18.1101, 78.8479],
+  ['Shivaji Nagar', '502103', 18.1023, 78.8440],
+  ['Gandhi Nagar', '502103', 18.1058, 78.8588],
+  ['Vidya Nagar', '502103', 18.0930, 78.8530],
+  ['Ambedkar Nagar', '502103', 18.1125, 78.8555],
+  ['Nasarpura', '502103', 18.1160, 78.8620],
+  ['Rangadhampally', '502103', 18.0890, 78.8650],
+  ['Ponnala', '502103', 18.1300, 78.8460],
+  ['Medak Road', '502103', 18.1000, 78.8350],
+  ['Karimnagar Road', '502103', 18.1200, 78.8700],
+  ['Hyderabad Road', '502103', 18.0850, 78.8450],
 ];
 
 // Types of work. Each service belongs to one type; each agent can do one or more.
@@ -266,6 +315,22 @@ export const serviceTypes = [
 ];
 
 // Which type of agent does each seeded service. Anything not listed goes to regular agents ('delivery').
+// Daily services: price as per shop bill, delivery time window (hours, India time), highlighted on the home page.
+export const serviceOptions = {
+  'Fresh Vegetables': {
+    price_on_bill: true, window: [6, 10], featured: true,
+    description: 'Farm-fresh vegetables every morning, 6–10 AM. Choose how much you need — your delivery partner buys them fresh at the market and you pay as per the shop bill.',
+  },
+  'Daily Fresh Meat & Fish': {
+    price_on_bill: true, featured: true,
+    description: 'Fresh chicken, mutton, prawns and fish, cut the way you like. Tell us the cut for each item — you pay as per the shop bill.',
+  },
+  'Fresh Milk': {
+    window: [6, 9], featured: true,
+    description: 'Fresh organic milk and packet milk at your door every morning, 6–9 AM.',
+  },
+};
+
 export const serviceSkills = {
   'Water-Tank Cleaning': 'home_service',
   'Water Filter / RO Service': 'home_service',

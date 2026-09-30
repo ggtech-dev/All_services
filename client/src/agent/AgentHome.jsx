@@ -3,7 +3,10 @@ import { useOutletContext } from 'react-router-dom';
 import { api } from '../api.js';
 import { useToast } from '../admin/ui.jsx';
 import { rupees, statusLabel, time, usePoll } from '../orderStatus.jsx';
-import { AgentShopBill, cashToCollect } from '../components/ShopBill.jsx';
+import { AgentShopBill } from '../components/ShopBill.jsx';
+import { AgentDoorPayment, feeLabel } from '../components/DeliveryCharge.jsx';
+import { cityOf, useSettings } from '../settings.js';
+import { qtyLabel } from '../qty.js';
 
 const nearest = (list, lat, lng) =>
   list.reduce((best, l) => {
@@ -143,7 +146,7 @@ export default function AgentHome() {
               </div>
               <p className="avail-summary">{o.summary}</p>
               <div className="avail-foot">
-                <small className="muted">{o.slot || 'ASAP'} · Collect {rupees(o.total)}</small>
+                <small className="muted">{o.slot || 'ASAP'} · Collect {o.on_bill ? (Number(o.total) > 0 ? `shop bill + ${rupees(o.total)}` : 'as per shop bill') : rupees(o.total)}</small>
                 <button
                   className="btn btn-primary btn-sm"
                   disabled={busy || s.active_orders > 0}
@@ -179,10 +182,15 @@ function LocationStatus({ location }) {
 
 function ActiveOrder({ order, busy, run }) {
   const [otp, setOtp] = useState('');
+  const settings = useSettings();
   const isService = order.kind === 'service';
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    `${order.address_line}, ${order.landmark || ''}, ${order.locality_name}, Hyderabad ${order.pincode || ''}`
+    `${order.address_line}, ${order.landmark || ''}, ${order.locality_name}, ${cityOf(settings)} ${order.pincode || ''}`
   )}`;
+  // The delivery/visit charge must be confirmed (company UPI or cash) before finishing.
+  const feePending = Number(order.delivery_fee) > 0 && !order.fee_paid_at;
+  // vegetables / meat are priced by the shop: the bill must be added before leaving the shop
+  const needsBill = order.items.some((i) => i.on_bill) && !order.bill_uploaded_at;
 
   return (
     <section className="active-card">
@@ -204,7 +212,13 @@ function ActiveOrder({ order, busy, run }) {
 
       <ul className="active-items">
         {order.items.map((i) => (
-          <li key={i.id}><span>{i.icon || '•'} {i.name} <small className="muted">{i.unit}</small></span><b>× {i.qty}</b></li>
+          <li key={i.id}>
+            <span>
+              {i.icon || '•'} {i.name} <small className="muted">{i.sell_by === 'pack' ? i.unit : ''}</small>
+              {i.note && <small className="item-note">✂️ {i.note}</small>}
+            </span>
+            <b>{i.sell_by === 'pack' ? `× ${Number(i.qty)}` : qtyLabel(i.qty, i.sell_by)}</b>
+          </li>
         ))}
       </ul>
       {order.notes && <p className="active-note">📝 {order.notes}</p>}
@@ -212,14 +226,15 @@ function ActiveOrder({ order, busy, run }) {
       {order.kind === 'products' && (order.status === 'assigned' || order.bill_uploaded_at) && (
         <AgentShopBill order={order} busy={busy} run={run} />
       )}
-      <div className="collect">💵 Collect <b>{rupees(cashToCollect(order))}</b> {cashToCollect(order) > 0 ? 'from the customer (cash or UPI)' : '— nothing to collect'}</div>
+      <AgentDoorPayment order={order} busy={busy} run={run} />
 
       {order.status === 'assigned' && (
         <div className="active-buttons">
+          {needsBill && <small className="muted">These items are priced by the shop — add the shop bill above, then pick up.</small>}
           {order.bill_payment_mode === 'customer_upi' && !order.payment_confirmed_at && (
             <small className="muted">Pick-up unlocks once the shop confirms the customer's UPI payment.</small>
           )}
-          <button className="btn btn-primary btn-block" disabled={busy || (order.bill_payment_mode === 'customer_upi' && !order.payment_confirmed_at)}
+          <button className="btn btn-primary btn-block" disabled={busy || needsBill || (order.bill_payment_mode === 'customer_upi' && !order.payment_confirmed_at)}
             onClick={() => run(() => api(`/agent/orders/${order.id}/status`, { method: 'POST', body: { status: 'picked_up' } }), isService ? 'On your way!' : 'Picked up. Deliver safely!')}>
             {isService ? '🚀 Start — I\'m on the way' : '📦 Picked up — start delivery'}
           </button>
@@ -233,8 +248,11 @@ function ActiveOrder({ order, busy, run }) {
         </div>
       )}
 
+      {order.status === 'picked_up' && feePending && (
+        <small className="muted center">“Mark {isService ? 'completed' : 'delivered'}” unlocks after the {feeLabel(order).toLowerCase()} is received.</small>
+      )}
       {order.status === 'picked_up' && !order.otp_required && (
-        <button className="btn btn-primary btn-block btn-success" disabled={busy}
+        <button className="btn btn-primary btn-block btn-success" disabled={busy || feePending}
           onClick={() => confirm(`Mark order #${order.id} as ${isService ? 'completed' : 'delivered'}?`) &&
             run(() => api(`/agent/orders/${order.id}/status`, { method: 'POST', body: { status: 'delivered' } }), '🎉 Delivered! You are free for the next order.')}>
           ✅ Mark {isService ? 'completed' : 'delivered'}
@@ -250,7 +268,7 @@ function ActiveOrder({ order, busy, run }) {
             Ask the customer for their 4-digit OTP
             <input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" placeholder="• • • •" required pattern="\d{4}" autoComplete="one-time-code" />
           </label>
-          <button className="btn btn-primary btn-block btn-success" disabled={busy || otp.length !== 4}>
+          <button className="btn btn-primary btn-block btn-success" disabled={busy || otp.length !== 4 || feePending}>
             ✅ Mark {isService ? 'completed' : 'delivered'}
           </button>
         </form>

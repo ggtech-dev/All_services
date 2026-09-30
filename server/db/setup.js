@@ -7,7 +7,7 @@
 import { readFile } from 'node:fs/promises';
 import bcrypt from 'bcryptjs';
 import { pool, SCHEMA } from '../src/db.js';
-import { categories, localities, products, serviceSkills, serviceTypes } from './catalog.js';
+import { categories, localities, products, serviceOptions, serviceSkills, serviceTypes } from './catalog.js';
 
 const refreshImages = process.argv.includes('--refresh-images');
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -19,10 +19,10 @@ const image = (keywords) => images[keywords] || {};
 const defaultSettings = {
   banner_title: 'What do you need today?',
   banner_subtitle: 'Water cans, plumbers, kirana, medicines, bike repair and more — from trusted local partners near you.',
-  announcement: '🎉 Free delivery on your first 3 orders across Hyderabad!',
+  announcement: '🎉 Free delivery on your first 3 orders across Siddipet!',
   support_phone: '+91 98765 43210',
-  service_city: 'Hyderabad, Telangana',
-  delivery_fee: '30',
+  service_city: 'Siddipet, Telangana',
+  delivery_fee: '30', // starting delivery charge for shop services; after that it is set per service (admin → Delivery charges)
   free_delivery_orders: '3',
   agent_pay_per_order: '25',
   agent_max_active_orders: '1',
@@ -42,6 +42,8 @@ try {
   await client.query(await sql('./promotions.sql'));
   await client.query(await sql('./reports.sql'));
   await client.query(await sql('./shop_bill.sql'));
+  await client.query(await sql('./daily_fresh.sql')); // before delivery.sql (its quote uses the delivery windows)
+  await client.query(await sql('./delivery.sql'));
 
   await client.query('BEGIN');
 
@@ -93,13 +95,24 @@ try {
     const serviceName = key.slice(key.indexOf('/') + 1); // service names can contain "/"
     const svc = await client.query('SELECT id, slug FROM services WHERE slug = $1', [`${catSlug}-${slugify(serviceName)}`]);
     if (!svc.rows[0]) throw new Error(`Seed products: service "${key}" not found`);
-    for (const [pi, [name, brand, unit, price, mrp, icon]] of items.entries()) {
+    for (const [pi, [name, brand, unit, price, mrp, icon, sellBy = 'pack', imageKw, noteOptions]] of items.entries()) {
+      const img = imageKw ? image(imageKw) : {};
+      const slug = `${svc.rows[0].slug}-${slugify(name)}`;
       const r = await client.query(
-        `INSERT INTO products (service_id, slug, name, brand, unit, price, mrp, icon, sort_order)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (slug) DO NOTHING`,
-        [svc.rows[0].id, `${svc.rows[0].slug}-${slugify(name)}`, name, brand || null, unit, price, mrp, icon, pi]
+        `INSERT INTO products (service_id, slug, name, brand, unit, price, mrp, icon, sort_order, sell_by, image_url, image_credit, note_options)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT (slug) DO NOTHING`,
+        [svc.rows[0].id, slug, name, brand || null, unit, price, mrp, icon, pi, sellBy, img.url, img.credit, noteOptions || null]
       );
       productCount += r.rowCount;
+      if (img.url) {
+        // a photo fetched later fills an empty one; --refresh-images replaces it (admin-uploaded photos are kept otherwise)
+        const u = await client.query(
+          `UPDATE products SET image_url = $2, image_credit = $3
+            WHERE slug = $1 AND ($4 OR image_url IS NULL) AND image_url IS DISTINCT FROM $2`,
+          [slug, img.url, img.credit, refreshImages]
+        );
+        refreshed += u.rowCount;
+      }
     }
   }
 
@@ -140,7 +153,7 @@ try {
   if (!promosSeeded.rowCount) {
     const samples = [
       // [name, title, subtitle, cta, link_type, link_value, placement, bg, image from service slug]
-      ['Free delivery launch offer', 'Free delivery on your first 3 orders 🎉', 'Milk, vegetables, kirana & more — delivered in about 30 minutes across Hyderabad', 'Shop now', 'category', 'food-daily', 'carousel', '#16a34a', 'food-daily-vegetable-delivery'],
+      ['Free delivery launch offer', 'Free delivery on your first 3 orders 🎉', 'Milk, vegetables, kirana & more — delivered in about 30 minutes across Siddipet', 'Shop now', 'category', 'food-daily', 'carousel', '#16a34a', 'food-daily-vegetable-delivery'],
       ['Plumber in 60 minutes', 'Plumber at your door in 60 minutes', 'Leaking tap? Blocked drain? Verified home service experts near you', 'Book a plumber', 'service', 'home-services-plumber-on-demand', 'carousel', '#1d4ed8', 'home-services-plumber-on-demand'],
       ['Morning milk', 'Fresh Vijaya milk every morning 🥛', 'Toned milk ₹28 · curd · ghee · paneer', 'Order milk', 'service', 'food-daily-milk-delivery', 'carousel', '#b45309', 'food-daily-milk-delivery'],
       ['AC service tile', 'AC service', 'Beat the heat — from ₹499', 'Book', 'service', 'home-services-ac-service', 'tile', '#0e7490', 'home-services-ac-service'],
@@ -159,6 +172,40 @@ try {
     console.log(`Added ${samples.length} sample promotions.`);
   }
 
+  // One time: the daily services (fresh vegetables 6–10 AM, fresh meat & fish, fresh milk 6–9 AM) — price as per
+  // shop bill, delivery window, highlighted on the home page, the usual delivery charge, and promotions for them.
+  // Later admin changes are kept.
+  const dailySeeded = await client.query("SELECT 1 FROM site_settings WHERE key = 'seeded_daily_fresh'");
+  if (!dailySeeded.rowCount) {
+    for (const [name, o] of Object.entries(serviceOptions)) {
+      const slug = `food-daily-${slugify(name)}`;
+      await client.query(
+        `UPDATE services SET price_on_bill = $2, window_from = $3, window_to = $4, is_featured = $5,
+                description = coalesce(description, $6), delivery_fee = coalesce(fn_setting_num('delivery_fee', 30), 30)
+          WHERE slug = $1`,
+        [slug, !!o.price_on_bill, o.window?.[0] ?? null, o.window?.[1] ?? null, !!o.featured, o.description]
+      );
+    }
+    const dailyPromos = [
+      // [name, title, subtitle, cta, service slug, placement, bg, order]
+      ['Fresh vegetables 6–10 AM', '🥬 Fresh vegetables every morning', 'Delivered 6–10 AM · choose in kg · pay as per market price', 'Order vegetables', 'food-daily-fresh-vegetables', 'carousel', '#15803d', -3],
+      ['Fresh meat & fish', '🍗 Fresh chicken, mutton, prawns & fish', 'Cut the way you like — curry cut, boneless, fry pieces', 'Order now', 'food-daily-daily-fresh-meat-fish', 'carousel', '#b91c1c', -2],
+      ['Fresh milk 6–9 AM', '🥛 Fresh milk at your door', 'Organic & packet milk · every morning 6–9 AM', 'Order milk', 'food-daily-fresh-milk', 'carousel', '#0369a1', -1],
+      ['Fresh vegetables tile', 'Fresh vegetables', '6–10 AM · market price', 'Order', 'food-daily-fresh-vegetables', 'tile', '#15803d', -3],
+      ['Fresh meat & fish tile', 'Fresh meat & fish', 'Cut the way you like', 'Order', 'food-daily-daily-fresh-meat-fish', 'tile', '#b91c1c', -2],
+      ['Fresh milk tile', 'Fresh milk', 'Every morning 6–9 AM', 'Order', 'food-daily-fresh-milk', 'tile', '#0369a1', -1],
+    ];
+    for (const [name, title, subtitle, cta, slug, placement, bg, order] of dailyPromos) {
+      await client.query(
+        `INSERT INTO promotions (name, title, subtitle, cta_text, link_type, link_value, placement, bg_color, sort_order, image_url, image_credit)
+         SELECT $1, $2, $3, $4, 'service', $5, $6, $7, $8, s.image_url, s.image_credit FROM services s WHERE s.slug = $5`,
+        [name, title, subtitle, cta, slug, placement, bg, order]
+      );
+    }
+    await client.query("INSERT INTO site_settings (key, value) VALUES ('seeded_daily_fresh', current_date::text)");
+    console.log('Added the daily services (vegetables, meat & fish, milk) and their promotions.');
+  }
+
   // Order numbers start at #1001.
   await client.query(`SELECT setval('orders_id_seq', 1000) WHERE NOT EXISTS (SELECT 1 FROM orders)`);
 
@@ -167,6 +214,25 @@ try {
       'INSERT INTO localities (name, pincode, lat, lng) VALUES ($1,$2,$3,$4) ON CONFLICT (name) DO NOTHING',
       [name, pincode, lat, lng]
     );
+  }
+
+  // One time: launch in Siddipet. The old Hyderabad areas are switched off (not deleted: old orders point to them)
+  // and "Hyderabad" in the home page texts becomes "Siddipet". Admin edits after this are kept.
+  const siddipet = await client.query("SELECT 1 FROM site_settings WHERE key = 'migrated_siddipet'");
+  if (!siddipet.rowCount) {
+    await client.query('UPDATE localities SET is_active = (name = ANY($1))', [localities.map(([name]) => name)]);
+    await client.query("UPDATE site_settings SET value = replace(value, 'Hyderabad', 'Siddipet') WHERE key IN ('announcement', 'banner_subtitle')");
+    await client.query("UPDATE promotions SET title = replace(title, 'Hyderabad', 'Siddipet'), subtitle = replace(subtitle, 'Hyderabad', 'Siddipet')");
+    await client.query("INSERT INTO site_settings (key, value) VALUES ('migrated_siddipet', current_date::text)");
+  }
+
+  // One time: delivery charge per service. Shop services (with products) start at the old single delivery fee,
+  // bookings at ₹0. Admin → Delivery charges changes them.
+  const perService = await client.query("SELECT 1 FROM site_settings WHERE key = 'migrated_service_fees'");
+  if (!perService.rowCount) {
+    await client.query(`UPDATE services s SET delivery_fee = coalesce(fn_setting_num('delivery_fee', 30), 30)
+                          WHERE EXISTS (SELECT 1 FROM products p WHERE p.service_id = s.id)`);
+    await client.query("INSERT INTO site_settings (key, value) VALUES ('migrated_service_fees', current_date::text)");
   }
 
   for (const [key, value] of Object.entries(defaultSettings)) {

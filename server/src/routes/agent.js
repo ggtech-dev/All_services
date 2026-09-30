@@ -111,7 +111,7 @@ router.post('/location', h(async (req, res) => {
 // body: { online: bool, locality_id? }
 router.patch('/status', h(async (req, res) => {
   await query('CALL sp_set_agent_online($1,$2,$3)', [
-    req.user.id, Boolean(req.body?.online), req.body?.locality_id ? Number(req.body.locality_id) : null,
+    req.user.id, req.body?.online === true || req.body?.online === 'true', req.body?.locality_id ? Number(req.body.locality_id) : null,
   ]);
   res.status(204).end();
 }));
@@ -119,10 +119,11 @@ router.patch('/status', h(async (req, res) => {
 // Open orders nobody has taken yet, nearest first. Customer phone/address are hidden until accepted.
 router.get('/available', h(async (req, res) => {
   const { rows } = await query(
-    `SELECT o.id, o.kind, o.total, o.slot, o.created_at, l.name AS locality_name, o.pincode,
+    `SELECT o.id, o.kind, o.total, o.delivery_fee, o.slot, o.created_at, l.name AS locality_name, o.pincode,
+            EXISTS (SELECT 1 FROM order_items i WHERE i.order_id = o.id AND i.on_bill) AS on_bill,
             st.name AS skill_name, st.icon AS skill_icon,
             (SELECT count(*) FROM order_items i WHERE i.order_id = o.id)::int AS item_count,
-            (SELECT string_agg(i.name || CASE WHEN i.qty > 1 THEN ' x' || i.qty ELSE '' END, ', ' ORDER BY i.id)
+            (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by), ', ' ORDER BY i.id)
                FROM order_items i WHERE i.order_id = o.id) AS summary,
             CASE WHEN me.lat IS NOT NULL
                  THEN fn_distance_km(me.lat, me.lng, coalesce(o.dest_lat, l.lat), coalesce(o.dest_lng, l.lng)) END AS distance_km
@@ -153,7 +154,7 @@ router.get('/orders', h(async (req, res) => {
   const { rows } = await query(
     `SELECT o.id, o.kind, o.status, o.total, o.agent_earning, o.created_at, o.assigned_at, o.delivered_at,
             o.contact_name, l.name AS locality_name,
-            (SELECT string_agg(i.name || CASE WHEN i.qty > 1 THEN ' x' || i.qty ELSE '' END, ', ' ORDER BY i.id)
+            (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by), ', ' ORDER BY i.id)
                FROM order_items i WHERE i.order_id = o.id) AS summary
        FROM orders o JOIN localities l ON l.id = o.locality_id
       WHERE o.agent_id = $1 AND (CASE WHEN $2 THEN o.status IN ('assigned', 'picked_up') ELSE o.status IN ('delivered', 'cancelled') END)
@@ -196,6 +197,12 @@ router.post('/orders/:id/bill', orderPhotoUpload(['bill_photo', 'qr_photo']), h(
     await discardUploads(req);
     throw err;
   }
+  res.status(204).end();
+}));
+
+// At the door: the customer paid the delivery charge. body: { mode: 'company_upi' | 'cash' }
+router.post('/orders/:id/fee-received', h(async (req, res) => {
+  await asActor(req.user.id, (db) => db.query('CALL sp_agent_fee_received($1,$2,$3)', [req.user.id, Number(req.params.id), req.body?.mode ?? null]));
   res.status(204).end();
 }));
 

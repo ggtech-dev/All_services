@@ -21,13 +21,15 @@ LANGUAGE sql IMMUTABLE SET search_path FROM CURRENT AS $$
   )))::numeric, 1)
 $$;
 
--- Delivery fee for a customer's next product order: free for their first N orders.
-CREATE OR REPLACE FUNCTION fn_delivery_fee_for(p_customer_id INT) RETURNS NUMERIC
+-- Delivery charge the customer pays on their next order, whose normal charge is p_base
+-- (set per service by the admin): free for their first N orders.
+DROP FUNCTION IF EXISTS fn_delivery_fee_for(INT);
+CREATE OR REPLACE FUNCTION fn_delivery_fee_for(p_customer_id INT, p_base NUMERIC) RETURNS NUMERIC
 LANGUAGE sql STABLE SET search_path FROM CURRENT AS $$
   SELECT CASE
     WHEN (SELECT count(*) FROM orders WHERE customer_id = p_customer_id AND status <> 'cancelled')
          < fn_setting_num('free_delivery_orders', 3) THEN 0
-    ELSE fn_setting_num('delivery_fee', 30)
+    ELSE greatest(coalesce(p_base, 0), 0)
   END
 $$;
 
@@ -48,7 +50,7 @@ CREATE OR REPLACE TRIGGER orders_event AFTER INSERT OR UPDATE ON orders FOR EACH
 -- ============ customer: place / cancel ============
 
 -- Places an order. Prices always come from the database, never from the browser.
---   p_items:      [{"product_id": 1, "qty": 2}, ...]   (product order)
+--   p_items:      [{"product_id": 1, "qty": 2, "note": "curry cut"}, ...]   (product order; qty 1.5 for kg items)
 --   p_service_id: a service to book instead of products
 --   p_contact:    {"name","phone","address_line","landmark","locality_id","pincode"}
 CREATE OR REPLACE FUNCTION fn_place_order(
@@ -60,9 +62,12 @@ DECLARE
   v_item   JSONB;
   v_prod   RECORD;
   v_svc    services;
-  v_qty    INT;
+  v_qty    NUMERIC;
+  v_price  NUMERIC;
+  v_win    RECORD;
   v_sub    NUMERIC := 0;
   v_fee    NUMERIC := 0;
+  v_base   NUMERIC := 0;
   v_kind   TEXT;
   v_skills TEXT[] := ARRAY[]::TEXT[];
   v_skill  TEXT;
@@ -93,6 +98,7 @@ BEGIN
     END IF;
     v_sub := v_svc.base_price;
     v_skill := v_svc.skill_code;
+    v_fee := fn_delivery_fee_for(p_customer_id, v_svc.delivery_fee);
   ELSE
     IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
       RAISE EXCEPTION 'Your cart is empty' USING ERRCODE = '22023';
@@ -100,7 +106,21 @@ BEGIN
     IF jsonb_array_length(p_items) > 40 THEN
       RAISE EXCEPTION 'Too many different items in one order (max 40)' USING ERRCODE = '22023';
     END IF;
-    v_fee := fn_delivery_fee_for(p_customer_id);
+    -- One trip: a cart from several shops pays the highest delivery charge among them.
+    SELECT coalesce(max(s.delivery_fee), 0) INTO v_base
+      FROM products p JOIN services s ON s.id = p.service_id
+     WHERE p.id IN (SELECT (x->>'product_id')::int FROM jsonb_array_elements(p_items) x WHERE x->>'product_id' ~ '^\d{1,9}$');
+    v_fee := fn_delivery_fee_for(p_customer_id, v_base);
+
+    -- Daily services deliver only in their time window (e.g. 6–10 AM): the slot must be one we offered.
+    SELECT * INTO v_win FROM fn_cart_window(
+      ARRAY(SELECT (x->>'product_id')::int FROM jsonb_array_elements(p_items) x WHERE x->>'product_id' ~ '^\d{1,9}$'), NULL);
+    IF v_win.conflict THEN
+      RAISE EXCEPTION 'Some items in your cart are delivered at different times of the day. Please order them separately.' USING ERRCODE = '22023';
+    END IF;
+    IF v_win.win_from IS NOT NULL AND NOT (coalesce(trim(p_slot), '') = ANY(fn_delivery_slots(v_win.win_from, v_win.win_to))) THEN
+      RAISE EXCEPTION 'Please choose a delivery time between % and %', fn_hour_label(v_win.win_from), fn_hour_label(v_win.win_to) USING ERRCODE = '22023';
+    END IF;
   END IF;
 
   INSERT INTO orders (customer_id, kind, contact_name, contact_phone, address_line, landmark, locality_id, pincode,
@@ -123,11 +143,7 @@ BEGIN
     VALUES (v.id, v_svc.id, v_svc.name, v_svc.price_unit, v_svc.base_price, 1, v_svc.base_price);
   ELSE
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_items) LOOP
-      v_qty := (v_item->>'qty')::int;
-      IF v_qty IS NULL OR v_qty < 1 OR v_qty > 50 THEN
-        RAISE EXCEPTION 'Quantity must be between 1 and 50' USING ERRCODE = '22023';
-      END IF;
-      SELECT p.id, p.name, p.brand, p.unit, p.price, p.in_stock, s.skill_code INTO v_prod
+      SELECT p.id, p.name, p.brand, p.unit, p.price, p.in_stock, p.sell_by, p.note_options, s.skill_code, s.price_on_bill INTO v_prod
         FROM products p JOIN services s ON s.id = p.service_id
        WHERE p.id = (v_item->>'product_id')::int AND p.is_active AND s.is_active;
       IF NOT FOUND THEN
@@ -136,9 +152,17 @@ BEGIN
       IF NOT v_prod.in_stock THEN
         RAISE EXCEPTION '% is out of stock. Please remove it from your cart.', v_prod.name USING ERRCODE = '22023';
       END IF;
-      INSERT INTO order_items (order_id, product_id, name, unit, price, qty, line_total)
-      VALUES (v.id, v_prod.id, v_prod.name, v_prod.unit, v_prod.price, v_qty, v_prod.price * v_qty);
-      v_sub := v_sub + v_prod.price * v_qty;
+      -- kg in 250 g steps, litres in 500 ml steps, packs / bunches / pieces 1–50
+      v_qty := CASE WHEN (v_item->>'qty') ~ '^\d{1,3}(\.\d{1,2})?$' THEN (v_item->>'qty')::numeric END;
+      IF NOT fn_qty_ok(v_prod.sell_by, v_qty) THEN
+        RAISE EXCEPTION 'Please choose a valid quantity for %', v_prod.name USING ERRCODE = '22023';
+      END IF;
+      -- "price as per shop bill" items count ₹0 now; the shop bill sets the amount later
+      v_price := CASE WHEN v_prod.price_on_bill THEN 0 ELSE v_prod.price END;
+      INSERT INTO order_items (order_id, product_id, name, unit, price, qty, line_total, sell_by, on_bill, note)
+      VALUES (v.id, v_prod.id, v_prod.name, v_prod.unit, v_price, v_qty, round(v_price * v_qty, 2), v_prod.sell_by,
+              v_prod.price_on_bill, nullif(left(trim(regexp_replace(coalesce(v_item->>'note', ''), '\s+', ' ', 'g')), 200), ''));
+      v_sub := v_sub + round(v_price * v_qty, 2);
       v_skills := array_append(v_skills, v_prod.skill_code);
     END LOOP;
     -- Products from one kind of service go to that type of agent; a mixed cart goes to delivery agents.
@@ -405,6 +429,10 @@ BEGIN
 
   IF p_status = 'picked_up' AND v.status = 'assigned' THEN
     -- Shop bill paid by the customer's UPI: the shop must have confirmed it before the agent leaves.
+    -- Items priced by the shop (vegetables, meat…): the bill must be uploaded before leaving the shop.
+    IF v.bill_uploaded_at IS NULL AND EXISTS (SELECT 1 FROM order_items WHERE order_id = v.id AND on_bill) THEN
+      RAISE EXCEPTION 'These items are priced by the shop: add the shop bill (amount + photo) before pick-up' USING ERRCODE = '55000';
+    END IF;
     IF v.bill_payment_mode = 'customer_upi' AND v.payment_confirmed_at IS NULL THEN
       RAISE EXCEPTION 'Wait until the shop confirms the customer''s UPI payment, then tap "Shop received payment"' USING ERRCODE = '55000';
     END IF;
@@ -415,13 +443,19 @@ BEGIN
     IF fn_setting_num('require_delivery_otp', 0) = 1 AND coalesce(trim(p_otp), '') <> v.delivery_otp THEN
       RAISE EXCEPTION 'Wrong OTP. Ask the customer for the 4-digit code shown in their app.' USING ERRCODE = '22023';
     END IF;
+    -- The delivery charge must be confirmed first: received on the company UPI, or paid in cash.
+    IF v.delivery_fee > 0 AND v.fee_paid_at IS NULL THEN
+      RAISE EXCEPTION 'First confirm the delivery charge of ₹%: tap "Received on company UPI" or "Paid in cash"', trim_scale(v.delivery_fee) USING ERRCODE = '55000';
+    END IF;
     v_pay := fn_setting_num('agent_pay_per_order', 25);
     UPDATE orders SET status = 'delivered', delivered_at = now(), agent_earning = v_pay WHERE id = v.id RETURNING * INTO v;
     INSERT INTO agent_wallet (agent_id, type, amount, order_id, note)
     VALUES (p_agent_id, 'earning', v_pay, v.id, 'Delivery #' || v.id);
-    -- Cash the agent collects at the door = total, minus the shop bill if the customer already paid the shop by UPI.
+    -- Cash the agent collects at the door = total, minus the shop bill if the customer already paid the shop by UPI,
+    -- minus the delivery charge if it was paid to the company UPI.
     v_cash := v.total - CASE WHEN v.bill_payment_mode = 'customer_upi' AND v.payment_confirmed_at IS NOT NULL
-                             THEN coalesce(v.bill_amount, 0) ELSE 0 END;
+                             THEN coalesce(v.bill_amount, 0) ELSE 0 END
+                      - CASE WHEN v.fee_payment_mode = 'company_upi' THEN v.delivery_fee ELSE 0 END;
     IF v.payment_method = 'cod' AND v_cash > 0 THEN
       INSERT INTO agent_wallet (agent_id, type, amount, order_id, note)
       VALUES (p_agent_id, 'cod_collected', v_cash, v.id, 'Cash collected for #' || v.id);
@@ -584,6 +618,10 @@ LANGUAGE plpgsql SET search_path FROM CURRENT AS $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM service_types WHERE code = p_skill_code) THEN
     RAISE EXCEPTION 'Unknown type of work' USING ERRCODE = '22023';
+  END IF;
+  -- A switched-off type has no agents taking orders: the service's orders would wait forever.
+  IF NOT EXISTS (SELECT 1 FROM service_types WHERE code = p_skill_code AND is_active) THEN
+    RAISE EXCEPTION 'That type of work is switched off. Choose an active type.' USING ERRCODE = '22023';
   END IF;
   UPDATE services SET skill_code = p_skill_code WHERE id = p_service_id;
   IF NOT FOUND THEN

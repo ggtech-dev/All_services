@@ -1,10 +1,11 @@
 import { api } from '../api.js';
 import { timeAgo, useLoad } from './ui.jsx';
 
-const ENTITY = { promotions: 'promotion', services: 'service', products: 'product', categories: 'category', site_settings: 'site settings' };
+const ENTITY = { promotions: 'promotion', services: 'service', products: 'product', categories: 'category', site_settings: 'site settings', localities: 'area' };
 const FIELD = {
   base_price: 'price', price_unit: 'price unit', is_active: 'visibility', image_url: 'image',
-  eta_minutes: 'time', skill_code: 'agent type', price: 'price', mrp: 'MRP', in_stock: 'stock', brand: 'brand', unit: 'pack size', service_id: 'service', requires_license: 'licence flag', category_id: 'category', name: 'name',
+  eta_minutes: 'time', delivery_fee: 'delivery charge', price_on_bill: 'price as per shop bill', window_from: 'delivery from', window_to: 'delivery until',
+  is_featured: 'home page highlight', sell_by: 'sold by', note_options: 'cutting options', pincode: 'pincode', lat: 'map location', lng: 'map location', skill_code: 'agent type', price: 'price', mrp: 'MRP', in_stock: 'stock', brand: 'brand', unit: 'pack size', service_id: 'service', requires_license: 'licence flag', category_id: 'category', name: 'name',
   description: 'description', icon: 'icon', color: 'colour', image_credit: 'image credit', sort_order: 'order',
 };
 

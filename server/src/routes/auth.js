@@ -81,6 +81,13 @@ async function portalError(user, portal) {
   return null;
 }
 
+// Auth endpoints only take plain text fields; an array/object (e.g. {"username":["a"]}) is a bad request, not a crash.
+router.use((req, res, next) => {
+  const odd = Object.values(req.body || {}).some((v) => v !== null && typeof v === 'object');
+  if (odd) return res.status(400).json({ error: 'Invalid request' });
+  next();
+});
+
 // ---------- sign-up (email verified with a code before the account exists) ----------
 // Step 1. body: { username, email, password, fullName, phone } → emails a 6-digit code.
 router.post('/register/start', h(async (req, res) => {

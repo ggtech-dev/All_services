@@ -33,6 +33,9 @@ const AgentHome = lazy(() => import('./agent/AgentHome.jsx'));
 const AgentOrders = lazy(() => import('./agent/AgentPages.jsx').then((m) => ({ default: m.AgentOrders })));
 const AgentWallet = lazy(() => import('./agent/AgentPages.jsx').then((m) => ({ default: m.AgentWallet })));
 const AgentProfile = lazy(() => import('./agent/AgentPages.jsx').then((m) => ({ default: m.AgentProfile })));
+const AgentPayQr = lazy(() => import('./agent/AgentPages.jsx').then((m) => ({ default: m.AgentPayQr })));
+const DeliveryCharges = lazy(() => import('./admin/DeliveryCharges.jsx'));
+const Areas = lazy(() => import('./admin/Areas.jsx'));
 
 const Loading = () => <div className="center-screen"><div className="spinner" /></div>;
 const HOME = { admin: '/admin', agent: '/agent' };
@@ -82,6 +85,7 @@ export default function App() {
         <Route path="orders" element={<AgentOrders />} />
         <Route path="wallet" element={<AgentWallet />} />
         <Route path="profile" element={<AgentProfile />} />
+        <Route path="pay-qr" element={<AgentPayQr />} />
       </Route>
 
       <Route path="/admin" element={<RoleOnly role="admin"><AdminLayout /></RoleOnly>}>
@@ -92,6 +96,8 @@ export default function App() {
         <Route path="promotions" element={<AdminPromotions />} />
         <Route path="reports" element={<Reports />} />
         <Route path="service-types" element={<ServiceTypes />} />
+        <Route path="delivery-charges" element={<DeliveryCharges />} />
+        <Route path="areas" element={<Areas />} />
         <Route path="services" element={<Services />} />
         <Route path="products" element={<Products />} />
         <Route path="categories" element={<Categories />} />

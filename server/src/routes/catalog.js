@@ -56,12 +56,29 @@ router.get('/categories/:slug', async (req, res, next) => {
 
     const services = await query(
       `SELECT s.id, s.slug, s.name, s.description, s.image_url, s.image_credit, s.base_price, s.price_unit,
-              s.eta_minutes, s.requires_license,
+              s.eta_minutes, s.requires_license, s.price_on_bill, s.window_from, s.window_to, s.is_featured,
               (SELECT count(*) FROM products p WHERE p.service_id = s.id AND p.is_active)::int AS product_count
-         FROM services s WHERE s.category_id = $1 AND s.is_active ORDER BY s.sort_order`,
+         FROM services s WHERE s.category_id = $1 AND s.is_active ORDER BY s.is_featured DESC, s.sort_order`,
       [cat.rows[0].id]
     );
     res.json({ category: cat.rows[0], services: services.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Services highlighted on the home page (e.g. fresh vegetables 6–10 AM).
+router.get('/featured-services', async (req, res, next) => {
+  try {
+    const { rows } = await query(
+      `SELECT s.id, s.slug, s.name, s.description, s.image_url, s.image_credit, s.price_unit, s.price_on_bill,
+              s.window_from, s.window_to, c.icon AS category_icon, c.color AS category_color,
+              (SELECT count(*) FROM products p WHERE p.service_id = s.id AND p.is_active)::int AS product_count
+         FROM services s JOIN categories c ON c.id = s.category_id
+        WHERE s.is_featured AND s.is_active AND c.is_active
+        ORDER BY c.sort_order, s.sort_order`
+    );
+    res.json(rows);
   } catch (err) {
     next(err);
   }
@@ -79,7 +96,7 @@ router.get('/services/:slug', async (req, res, next) => {
     if (!svc.rows[0]) return res.status(404).json({ error: 'Service not found' });
 
     const products = await query(
-      `SELECT id, slug, name, brand, description, icon, image_url, image_credit, unit, price, mrp, in_stock
+      `SELECT id, slug, name, brand, description, icon, image_url, image_credit, unit, price, mrp, in_stock, sell_by, note_options
          FROM products WHERE service_id = $1 AND is_active ORDER BY in_stock DESC, sort_order, id`,
       [svc.rows[0].id]
     );

@@ -1,6 +1,6 @@
 # All Services
 
-A local services super-app for Hyderabad, Telangana: customers browse service categories (home services, groceries, health, vehicle, personal, recycling, logistics), shop products inside services (milk, kirana, vegetables…) and book services; admins manage the whole catalog, products, prices, photos and home page from an admin panel.
+A local services super-app for Telangana, launching in **Siddipet**: customers browse service categories (home services, groceries, health, vehicle, personal, recycling, logistics), shop products inside services (milk, kirana, vegetables…) and book services; admins manage the whole catalog, products, prices, photos and home page from an admin panel.
 
 **Stack:** React (Vite) · Node.js (Express) · PostgreSQL (business logic in functions/procedures)
 
@@ -69,7 +69,9 @@ Default admin: `admin` / `Admin@123` (set `ADMIN_PASSWORD` before the first `db:
 | Products | Items inside a service (e.g. Milk Delivery → Vijaya Toned Milk 500 ml): add / edit / delete, price & MRP edited in place, photo upload, in-stock and Live switches |
 | Categories | Add / edit / delete categories, icon, colour, image, show/hide |
 | Prices & items | One page with every product and service: edit any price or photo in the row, add new products/services, bulk % change (products, services or both) with full preview, price history |
-| Site settings | Home banner, announcement strip, city, support phone, delivery fee, free deliveries for new customers, agent pay per delivery, orders an agent can carry at once |
+| **Delivery charges** | Company UPI QR (upload / scan; the UPI ID is read from the QR), free deliveries for new customers, and the delivery charge of every service (click to edit, or "set all" per category) |
+| **Service areas** | The areas customers choose at checkout: add (tap the map for the location), rename, move, switch off. Areas are never deleted — old orders keep them |
+| Site settings | Home banner, announcement strip, city, support phone, agent pay per delivery, orders an agent can carry at once, delivery OTP on/off |
 | Activity log | Every admin change: who, what, old → new |
 
 Everything saves immediately and customers see it on their next page load.
@@ -119,12 +121,42 @@ Every **service** has one type of work (`services.skill_code`) and every **agent
 
 For item orders the agent can buy from a local shop and let the customer pay the shop directly:
 
-1. **Agent** (order accepted, at the shop): *Add shop bill* → bill amount, bill photo, and the shop's UPI QR photo — the app **reads the QR** and fills the UPI ID. (Or *I paid cash* if the shop has no UPI.)
-2. **Customer** sees the bill photo and amount, taps **Pay with UPI app** (opens GPay / PhonePe / Paytm with shop and amount filled), or scans the QR / copies the UPI ID, then uploads the payment screenshot (+ optional UTR).
-3. **Agent** sees the screenshot, checks with the shopkeeper → **Shop received payment**. Pick-up is locked until then. At the door the agent collects only what is still due (delivery fee, or bill + fee when the agent paid cash).
+1. **Agent** (order accepted, at the shop): *Add shop bill* → bill amount, bill photo (📷 Camera or 🖼️ Gallery), and the shop's UPI QR:
+   - **🔳 Scan shop's UPI QR (live camera)** — point the phone at the shop's scanner; it is read automatically and that frame is kept as the QR photo, or
+   - take / choose a photo of the QR — the app **reads the QR** and fills the UPI ID and shop name. (Or *I paid cash* if the shop has no UPI.)
+
+   Live scanning needs camera permission and a secure page (https, or localhost). On plain http over Wi-Fi the Camera / Gallery buttons still work.
+2. **Customer** sees the bill photo and amount, taps **Pay with UPI app** (opens GPay / PhonePe / Paytm with shop and amount filled), or scans the QR / copies the UPI ID, then uploads the payment screenshot from the Gallery (or Camera) (+ optional UTR).
+3. **Agent** sees the screenshot, checks with the shopkeeper → **Shop received payment**. Pick-up is locked until then. At the door the agent collects only what is still due (the bill in cash when the agent paid the shop; the delivery charge goes to the company UPI — see below).
 4. After delivery or cancellation the **shop's QR photo and UPI ID are deleted**; the bill photo and payment screenshot stay as records.
 
 Photos are stored in `server/private_uploads/orders` and only served to that order's customer, its agent and admins. Logic: `fn_agent_upload_bill`, `fn_customer_payment_proof`, `sp_agent_confirm_payment`, `fn_clear_shop_payment_details` in [`server/db/shop_bill.sql`](server/db/shop_bill.sql).
+
+## Daily services: fresh vegetables, meat & fish, milk
+
+Three regular-agent services, highlighted on the home page (**🌅 Daily fresh**), first in their category, and in the promotions carousel + tiles:
+
+| Service | Delivery time | Price | Customer chooses |
+|---|---|---|---|
+| **Fresh Vegetables** | 6 AM – 10 AM | as per shop bill | kg in 250 g steps (leafy greens by bunch) |
+| **Daily Fresh Meat & Fish** | any time | as per shop bill | kg + cutting instructions per item (curry cut, boneless, fry pieces… or own words) |
+| **Fresh Milk** | 6 AM – 9 AM | fixed (admin edits) | organic milk in litres (500 ml steps), packet milk by count |
+
+- **Price as per shop bill**: no prices are shown; the agent buys at the market, uploads the bill (photo + amount, shop UPI QR or cash) and **cannot pick up until the bill is added**. The customer pays the bill amount; the delivery charge still goes to the company UPI.
+- **Delivery window**: checkout offers 1-hour slots for today and tomorrow inside the window (a slot can be chosen until 45 min before it ends); the server only accepts those slots. A cart mixing windows uses their overlap (vegetables + milk → 6–9 AM); windows that don't overlap must be ordered separately.
+- **Admin**: Services → edit → *Daily service* (delivery from/until, price as per shop bill, highlight on home page). Products → edit → *Customer chooses* (packs / kg / litres / bunches / pieces) and *Cutting options*.
+- Item photos: Wikimedia Commons (free licences, credited on each photo), checked by hand; 4 items without a good photo show an emoji tile — upload one from Admin → Products.
+
+Logic: `fn_qty_ok`, `fn_item_label`, `fn_delivery_slots`, `fn_cart_window`, `sp_set_service_options`, `sp_set_product_selling` in [`server/db/daily_fresh.sql`](server/db/daily_fresh.sql); ordering rules in `fn_place_order` / `fn_agent_update_order`.
+
+## Delivery charges (paid to the company UPI QR)
+
+- **Per service.** Admin → *Delivery charges* sets a charge for each service (shops started at ₹30, bookings at ₹0). A cart from several shops pays the **highest** charge among them (one trip). Each customer's first N orders are free (N set on the same page). Distance-based charges can come later.
+- **Company UPI QR.** The admin uploads (or scans) the company's UPI QR on the same page; the UPI ID is read from the QR. Every agent has a **🔳 Pay QR** tab showing it.
+- **At the door.** The agent sees *Delivery charge ₹40* → **Show company QR to customer** → the customer scans, pays and shows the success screen → agent taps **✅ Received on company UPI** (or *Customer paid in cash instead*). **Mark delivered stays locked until then.** The customer's order page also has a **📱 Pay ₹40 with UPI app** button once the order is on the way.
+- **Money.** A charge paid to the company UPI is *not* counted as cash with the agent; paid in cash, it is. Every confirmation is on the order timeline and in the admin order detail.
+
+Logic: `fn_delivery_quote`, `sp_set_service_delivery_fee`, `fn_set_category_delivery_fee`, `sp_agent_fee_received`, `fn_save_locality` in [`server/db/delivery.sql`](server/db/delivery.sql); the "confirm before delivered" rule is in `fn_agent_update_order`.
 
 ## Reports
 
@@ -179,7 +211,7 @@ MAIL_FROM=All Services <no-reply@yourdomain.in>
 1. Customer places an order (prices are recalculated in the database, never trusted from the browser). A 4-digit **delivery OTP** is created.
 2. Online agents see it in *Orders near you*, sorted by distance from their area. Customer phone/address stay hidden until an agent accepts.
 3. The first agent to tap **Accept** gets it (safe even if two tap at the same moment). An agent carries one order at a time by default, so they show as *busy*.
-4. Agent taps **Picked up**, delivers, and enters the customer's OTP → **Delivered**. The agent earns the per-delivery pay in their wallet and the COD cash is recorded as *cash in hand*. The agent is *free* again.
+4. Agent taps **Picked up**, reaches the customer, confirms the delivery charge (**Received on company UPI** or cash) and taps **Delivered** (plus the customer's OTP, if the admin switched that on). The agent earns the per-delivery pay in their wallet and any cash collected is recorded as *cash in hand*. The agent is *free* again.
 5. Customers can cancel until pickup; admins until delivery. Agents can release an order they can't do; it goes back to the open list.
 
 Identity documents are stored in `server/private_uploads` (never served publicly, only streamed to logged-in admins). Only the last 4 digits of Aadhaar are kept.
@@ -194,7 +226,7 @@ To re-fetch seed photos: delete entries from `images.json`, run `npm run db:imag
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/api/auth/register` | – | `{ username, password, fullName?, phone? }` |
+| POST | `/api/auth/register/start`, `/register/verify` | – | Sign-up: emails a 6-digit code, then creates the account |
 | POST | `/api/auth/login` | – | `{ username, password, portal: 'user' \| 'admin' }` |
 | GET | `/api/auth/me` | user | Current user |
 | GET | `/api/categories`, `/api/categories/:slug` | – | Live categories / services |
@@ -210,6 +242,10 @@ To re-fetch seed photos: delete entries from `images.json`, run `npm run db:imag
 | POST | `/api/admin/prices/bulk` · GET `/api/admin/prices/history` | admin | Bulk pricing |
 | PUT | `/api/admin/settings` | admin | Save home page settings |
 | POST | `/api/admin/upload` | admin | Upload image (JPG/PNG/WEBP/GIF, ≤ 5 MB) |
+| GET | `/api/orders/quote?products=1,2` · `?service=7` | user | Delivery charge for this cart / booking |
+| POST | `/api/agent/orders/:id/fee-received` | agent | `{ mode: 'company_upi' \| 'cash' }` at the door |
+| GET | `/api/admin/delivery-charges` · PATCH `/api/admin/services/:id/delivery-fee` · POST `/api/admin/delivery-charges/category` | admin | Charges per service |
+| GET/POST/PUT | `/api/admin/localities[/:id]` | admin | Service areas |
 
 ## Roadmap
 
@@ -220,6 +256,8 @@ To re-fetch seed photos: delete entries from `images.json`, run `npm run db:imag
 - [x] Cart & checkout, service booking, live order tracking with delivery OTP
 - [x] Delivery agents: apply with documents, admin approval, agent app, wallet & reports
 - [x] Admin: manage orders, manage agents
+- [x] Delivery charge per service, paid to the company UPI QR at the door
+- [ ] Distance-based delivery charges
 - [ ] Online payments (UPI / Razorpay)
 - [ ] SMS / push notifications for new orders
 - [x] Live GPS tracking (agent → customer & admin maps)

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { VEHICLES } from '../orderStatus.jsx';
+import { cityOf, useSettings } from '../settings.js';
 
 // Also used by the admin "Add agent" form (with docsRequired=false and a custom submit).
 export const AGENT_DOCS = [
@@ -160,13 +161,14 @@ function DocInput({ doc, required, file, onChange }) {
 // Public page: /agent/apply — share this link with people who want to deliver for us.
 export default function AgentApply() {
   const [done, setDone] = useState(false);
+  const settings = useSettings();
 
   return (
     <div className="apply-page">
       <header className="apply-hero">
         <Link to="/login" className="brand brand-lg"><span className="brand-logo">AS</span><span>All Services</span></Link>
         <h1>Work with All Services 🛵🔧⚡</h1>
-        <p>Delivery partners, plumbers, electricians, technicians, cleaners and more — earn on every job across Hyderabad. Choose your own hours, get paid to your wallet, work near home.</p>
+        <p>Delivery partners, plumbers, electricians, technicians, cleaners and more — earn on every job across {cityOf(settings).split(',')[0]}. Choose your own hours, get paid to your wallet, work near home.</p>
         <div className="hero-chips">
           <span className="chip">💰 Earn per job</span>
           <span className="chip">🕒 Flexible hours</span>

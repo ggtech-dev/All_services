@@ -54,6 +54,7 @@ export default function AgentLayout() {
         <nav className="agent-tabs">
           <NavLink to="/agent" end><span>🏠</span>Home</NavLink>
           <NavLink to="/agent/orders"><span>📦</span>My orders</NavLink>
+          <NavLink to="/agent/pay-qr"><span>🔳</span>Pay QR</NavLink>
           <NavLink to="/agent/wallet"><span>💰</span>Wallet</NavLink>
           <NavLink to="/agent/profile"><span>👤</span>Profile</NavLink>
         </nav>

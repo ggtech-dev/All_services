@@ -465,6 +465,20 @@ END $$;
 CREATE OR REPLACE PROCEDURE sp_save_settings(p_settings JSONB)
 LANGUAGE plpgsql SET search_path FROM CURRENT AS $$
 BEGIN
+  -- Fees, agent pay and limits must be plain numbers (a typo would otherwise silently fall back to defaults).
+  IF EXISTS (SELECT 1 FROM jsonb_each_text(p_settings)
+              WHERE key IN ('delivery_fee', 'free_delivery_orders', 'agent_pay_per_order', 'agent_max_active_orders', 'require_delivery_otp')
+                AND value <> '' AND value !~ '^\d+(\.\d+)?$') THEN
+    RAISE EXCEPTION 'Fees, agent pay and limits must be numbers (0 or more)' USING ERRCODE = '22023';
+  END IF;
+  -- Company UPI (customers pay the delivery charge to it): a real UPI ID, and a QR image uploaded here.
+  IF coalesce(p_settings->>'company_upi_id', '') <> '' AND p_settings->>'company_upi_id' !~ '^[a-zA-Z0-9._-]{2,100}@[a-zA-Z0-9]{2,64}$' THEN
+    RAISE EXCEPTION 'That UPI ID doesn''t look right (example: allservices@ybl)' USING ERRCODE = '22023';
+  END IF;
+  IF coalesce(p_settings->>'company_qr_url', '') <> '' AND p_settings->>'company_qr_url' !~ '^/uploads/[A-Za-z0-9._-]+$' THEN
+    RAISE EXCEPTION 'Upload the QR image here' USING ERRCODE = '22023';
+  END IF;
+
   INSERT INTO site_settings (key, value, updated_at)
   SELECT key, value, now() FROM jsonb_each_text(p_settings)
   ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();

@@ -66,6 +66,13 @@ a.stat-tile:hover { transform: translateY(-2px); }
 .stat-label { font-size: 13px; color: var(--muted); }
 .stat-value { font-size: 26px; font-weight: 700; line-height: 1.2; }
 .stat-sub { font-size: 12px; color: var(--muted); }
+/* phones: two compact tiles per row instead of one tall column */
+@media (max-width: 560px) {
+  .stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-tile { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; text-align: left; }
+  .stat-icon { width: 36px; height: 36px; font-size: 18px; }
+  .stat-value { font-size: 22px; }
+}
 
 /* bars */
 .bars { display: flex; flex-direction: column; gap: 12px; }
@@ -433,3 +440,24 @@ a.stat-tile:hover { transform: translateY(-2px); }
 .cell-bar > span:last-child { position: relative; }
 @media (max-width: 1200px) { .chart-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 1000px) { .kpi-grid { grid-template-columns: 1fr 1fr; } .report-grid, .chart-grid { grid-template-columns: 1fr; } }
+
+/* ---------- delivery charges & service areas ---------- */
+.company-upi-grid { display: grid; grid-template-columns: 240px 1fr; gap: 24px; align-items: start; }
+.company-upi-grid > div:first-child { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.inline-form { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.inline-input { display: inline-flex; align-items: center; gap: 8px; margin-left: 8px; }
+.inline-input input { width: 80px; }
+.panel-pad { padding: 0 18px; }
+.fee-group { border-top: 1px solid var(--border); }
+.fee-group-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 18px; background: #f8fafc; }
+.fee-bulk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.fee-bulk input { width: 76px; padding: 6px 8px; }
+.fee-cell { width: 140px; text-align: right; }
+.area-pin-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 720px) {
+  .company-upi-grid { grid-template-columns: 1fr; }
+}
+
+/* daily service options in the service form */
+.daily-options { border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.daily-options legend { font-weight: 700; padding: 0 6px; }

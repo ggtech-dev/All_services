@@ -521,5 +521,257 @@
     "credit": "\"3 Wheeled Bajaj Delivery Scooter - IMG_5409\" by catchesthelight is licensed under CC BY-NC-ND 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-nd/2.0/.",
     "source": "https://www.flickr.com/photos/48358932@N00/7865671710",
     "india": true
+  },
+  "veg:tomato": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c3/Organic_home-grown_tomatoes_-_unripe_to_ripe.jpg/960px-Organic_home-grown_tomatoes_-_unripe_to_ripe.jpg",
+    "credit": "\"Organic home-grown tomatoes - unripe to ripe\" by Michal Klajban, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Organic_home-grown_tomatoes_-_unripe_to_ripe.jpg",
+    "india": false
+  },
+  "veg:onion": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d3/Onions_market.jpg/960px-Onions_market.jpg",
+    "credit": "\"Onions market\" by James Moore200, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Onions_market.jpg",
+    "india": false
+  },
+  "veg:brinjal": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a0/Eggplant_%2827751779984%29.jpg/960px-Eggplant_%2827751779984%29.jpg",
+    "credit": "\"Eggplant (27751779984)\" by Karen and Brad Emerson, CC BY 2.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Eggplant_(27751779984).jpg",
+    "india": false
+  },
+  "veg:green-chilli": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3d/Green_chillies_Kerala.jpg/960px-Green_chillies_Kerala.jpg",
+    "credit": "\"Green chillies Kerala\" by Dr. Chinchu C., CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Green_chillies_Kerala.jpg",
+    "india": true
+  },
+  "veg:carrot": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c3/Carrots_at_Ljubljana_Central_Market.JPG/960px-Carrots_at_Ljubljana_Central_Market.JPG",
+    "credit": "\"Carrots at Ljubljana Central Market\" by domdomegg, CC BY 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Carrots_at_Ljubljana_Central_Market.JPG",
+    "india": false
+  },
+  "fresh,vegetables": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/06/Vegetable_Vendor_Hyderabad.jpg/960px-Vegetable_Vendor_Hyderabad.jpg",
+    "credit": "\"Vegetable Vendor Hyderabad\" by Michael Coghlan, CC BY 2.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Vegetable_Vendor_Hyderabad.jpg",
+    "india": true
+  },
+  "fresh,milk": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e2/Milk_vender_with_typical_traditional_brass_containers_%2C_Gagar_%2Cused_in_Majha_Region_of_Punjab_02.jpg/960px-Milk_vender_with_typical_traditional_brass_containers_%2C_Gagar_%2Cused_in_Majha_Region_of_Punjab_02.jpg",
+    "credit": "\"Milk vender with typical traditional brass containers , Gagar ,used in Majha Region of Punjab 02\" by Harvinder Chandigarh, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Milk_vender_with_typical_traditional_brass_containers_,_Gagar_,used_in_Majha_Region_of_Punjab_02.jpg",
+    "india": false,
+    "picked": true
+  },
+  "veg:potato": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/23/Kabale_Irish_Potato_Market_in_Western_Uganda_05.jpg/960px-Kabale_Irish_Potato_Market_in_Western_Uganda_05.jpg",
+    "credit": "\"Kabale Irish Potato Market in Western Uganda 05\" by B722N, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Kabale_Irish_Potato_Market_in_Western_Uganda_05.jpg",
+    "india": false,
+    "picked": true
+  },
+  "veg:okra": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/41/Fresh_Okra_vegetable.jpg/960px-Fresh_Okra_vegetable.jpg",
+    "credit": "\"Fresh Okra vegetable\" by Iwai-Dialax, CC BY 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Fresh_Okra_vegetable.jpg",
+    "india": false,
+    "picked": true
+  },
+  "veg:beans": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/83/Macro_of_Fresh_Green_Beans_Buncis.jpg/960px-Macro_of_Fresh_Green_Beans_Buncis.jpg",
+    "credit": "\"Macro of Fresh Green Beans Buncis\" by Undeka 11, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Macro_of_Fresh_Green_Beans_Buncis.jpg",
+    "india": false
+  },
+  "veg:cabbage": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/35/Cabbages_-_Harbourside_Market%2C_Wellington%2C_New_Zealand_-_DSC09800.jpg/960px-Cabbages_-_Harbourside_Market%2C_Wellington%2C_New_Zealand_-_DSC09800.jpg",
+    "credit": "\"Cabbages - Harbourside Market, Wellington, New Zealand - DSC09800\" by Daderot, CC0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Cabbages_-_Harbourside_Market,_Wellington,_New_Zealand_-_DSC09800.jpg",
+    "india": false,
+    "picked": true
+  },
+  "veg:bottle-gourd": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Lauki.JPG/960px-Lauki.JPG",
+    "credit": "\"Lauki\" by Miansari66, CC0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Lauki.JPG",
+    "india": false,
+    "picked": true
+  },
+  "veg:ridge-gourd": {
+    "url": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Luffa_aegyptica.jpg",
+    "credit": "\"Luffa aegyptica\" by ‘Uncle Carl’ (カールおじさん)., CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Luffa_aegyptica.jpg",
+    "india": false
+  },
+  "veg:bitter-gourd": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/98/Bitter_gourd_at_Hyderabad_market.jpg/960px-Bitter_gourd_at_Hyderabad_market.jpg",
+    "credit": "\"Bitter gourd at Hyderabad market\" by Bhaskaranaidu, Public domain (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Bitter_gourd_at_Hyderabad_market.jpg",
+    "india": true
+  },
+  "veg:drumstick": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d3/India_-_Koyambedu_Market_-_Drumstick_06_%283986225505%29.jpg/960px-India_-_Koyambedu_Market_-_Drumstick_06_%283986225505%29.jpg",
+    "credit": "\"India - Koyambedu Market - Drumstick 06 (3986225505)\" by McKay Savage from London, UK, CC BY 2.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:India_-_Koyambedu_Market_-_Drumstick_06_(3986225505).jpg",
+    "india": true
+  },
+  "veg:capsicum": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bc/Green_Bell_Peppers_%2822226099930%29.jpg/960px-Green_Bell_Peppers_%2822226099930%29.jpg",
+    "credit": "\"Green Bell Peppers (22226099930)\" by Mike Mozart from Funny YouTube, USA, CC BY 2.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Green_Bell_Peppers_(22226099930).jpg",
+    "india": false,
+    "picked": true
+  },
+  "veg:cucumber": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/76/Greek_yoghurt_cucumbers_garlic.jpg/960px-Greek_yoghurt_cucumbers_garlic.jpg",
+    "credit": "\"Greek yoghurt cucumbers garlic\" by Nikodem Nijaki, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Greek_yoghurt_cucumbers_garlic.jpg",
+    "india": false
+  },
+  "veg:beetroot": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/52/Beetroots_in_a_basket.jpg/960px-Beetroots_in_a_basket.jpg",
+    "credit": "\"Beetroots in a basket\" by W.carter, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Beetroots_in_a_basket.jpg",
+    "india": false
+  },
+  "veg:ginger": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fb/Fresh_ginger_rhizome_01.jpg/960px-Fresh_ginger_rhizome_01.jpg",
+    "credit": "\"Fresh ginger rhizome 01\" by Friday musa, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Fresh_ginger_rhizome_01.jpg",
+    "india": false,
+    "picked": true
+  },
+  "veg:garlic": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e5/GarlicBasket.jpg/960px-GarlicBasket.jpg",
+    "credit": "\"GarlicBasket\" by Jonathunder, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:GarlicBasket.jpg",
+    "india": false
+  },
+  "veg:spinach": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/67/Spinach_bunches_in_a_stack.jpg/960px-Spinach_bunches_in_a_stack.jpg",
+    "credit": "\"Spinach bunches in a stack\" by Jeffery Martin, CC0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Spinach_bunches_in_a_stack.jpg",
+    "india": false,
+    "picked": true
+  },
+  "veg:coriander": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b7/Bunches_of_coriander_leaves.jpg/960px-Bunches_of_coriander_leaves.jpg",
+    "credit": "\"Bunches of coriander leaves\" by Kpsudeep, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Bunches_of_coriander_leaves.jpg",
+    "india": false
+  },
+  "veg:mint": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/20/Fresh_Mint_leaves.jpg/960px-Fresh_Mint_leaves.jpg",
+    "credit": "\"Fresh Mint leaves\" by Mangosapiens, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Fresh_Mint_leaves.jpg",
+    "india": false
+  },
+  "meat:chicken": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d1/Raw_chicken.jpg/960px-Raw_chicken.jpg",
+    "credit": "\"Raw chicken\" by Bhaskaranaidu, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Raw_chicken.jpg",
+    "india": false
+  },
+  "meat:boneless-chicken": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b8/Raw_chicken_slices.jpg/960px-Raw_chicken_slices.jpg",
+    "credit": "\"Raw chicken slices\" by kakyusei, CC0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Raw_chicken_slices.jpg",
+    "india": false
+  },
+  "meat:country-chicken": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e1/Country_Chicken_Meat_Cutting_Process.jpg/960px-Country_Chicken_Meat_Cutting_Process.jpg",
+    "credit": "\"Country Chicken Meat Cutting Process\" by Yakshitha, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Country_Chicken_Meat_Cutting_Process.jpg",
+    "india": false,
+    "picked": true
+  },
+  "meat:mutton": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/38/Raw_lamb_cutlets_with_shredded_ginger_and_rosemary.jpg/960px-Raw_lamb_cutlets_with_shredded_ginger_and_rosemary.jpg",
+    "credit": "\"Raw lamb cutlets with shredded ginger and rosemary\" by Photo by User:Salimfadhley, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Raw_lamb_cutlets_with_shredded_ginger_and_rosemary.jpg",
+    "india": false,
+    "picked": true
+  },
+  "meat:keema": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d1/Hackfleisch-1.jpg/960px-Hackfleisch-1.jpg",
+    "credit": "\"Hackfleisch-1\" by No machine-readable author provided. Rainer Zenz assumed (based on copyright claims)., CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Hackfleisch-1.jpg",
+    "india": false,
+    "picked": true
+  },
+  "meat:prawns": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/43/Prawns_-_%E0%A4%B8%E0%A5%81%E0%A4%82%E0%A4%97%E0%A4%9F%E0%A4%BE.jpg/960px-Prawns_-_%E0%A4%B8%E0%A5%81%E0%A4%82%E0%A4%97%E0%A4%9F%E0%A4%BE.jpg",
+    "credit": "\"Prawns - सुंगटा\" by Kaviyatriatisha, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Prawns_-_%E0%A4%B8%E0%A5%81%E0%A4%82%E0%A4%97%E0%A4%9F%E0%A4%BE.jpg",
+    "india": false
+  },
+  "meat:rohu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e0/Rohu_at_Giant_Hypermarket_Kota_Damansara_20230203_105829.jpg/960px-Rohu_at_Giant_Hypermarket_Kota_Damansara_20230203_105829.jpg",
+    "credit": "\"Rohu at Giant Hypermarket Kota Damansara 20230203 105829\" by Wiki Farazi, CC0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Rohu_at_Giant_Hypermarket_Kota_Damansara_20230203_105829.jpg",
+    "india": false
+  },
+  "meat:katla": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e0/Catla_catla.JPG/960px-Catla_catla.JPG",
+    "credit": "\"Catla catla\" by Khalid Mahmood, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Catla_catla.JPG",
+    "india": false
+  },
+  "meat:murrel": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a6/Snakehead_murrel_selling.jpg/960px-Snakehead_murrel_selling.jpg",
+    "credit": "\"Snakehead murrel selling\" by Salil Kumar Mukherjee, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Snakehead_murrel_selling.jpg",
+    "india": false
+  },
+  "meat:tilapia": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/83/Tilapia_Fish.jpg/960px-Tilapia_Fish.jpg",
+    "credit": "\"Tilapia Fish\" by Nana Pearls, CC0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Tilapia_Fish.jpg",
+    "india": false,
+    "picked": true
+  },
+  "milk:packet": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1e/Ponlait_milk_packet_cover_front.jpg/960px-Ponlait_milk_packet_cover_front.jpg",
+    "credit": "\"Ponlait milk packet cover front\" by Manimaran96, CC0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Ponlait_milk_packet_cover_front.jpg",
+    "india": false,
+    "picked": true
+  },
+  "fresh,meat": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cc/Broiler_Chicken_kept_outside_of_a_Chicken_Shop_in_India.jpg/960px-Broiler_Chicken_kept_outside_of_a_Chicken_Shop_in_India.jpg",
+    "credit": "\"Broiler Chicken kept outside of a Chicken Shop in India\" by Amrithraj, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Broiler_Chicken_kept_outside_of_a_Chicken_Shop_in_India.jpg",
+    "india": true,
+    "picked": true
+  },
+  "veg:raw-banana": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/24/Green_raw_bananas.jpg/960px-Green_raw_bananas.jpg",
+    "credit": "\"Green raw bananas\" by Vitaium, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Green_raw_bananas.jpg",
+    "india": false,
+    "picked": true
+  },
+  "veg:gongura": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dd/Guntur_Gongura.jpg/960px-Guntur_Gongura.jpg",
+    "credit": "\"Guntur Gongura\" by Gpics at English Wikipedia, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Guntur_Gongura.jpg",
+    "india": false,
+    "picked": true
+  },
+  "veg:curry-leaves": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/76/20260317_Murraya_koenigii_02.jpg/960px-20260317_Murraya_koenigii_02.jpg",
+    "credit": "\"20260317 Murraya koenigii 02\" by Flocci Nivis, CC BY 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:20260317_Murraya_koenigii_02.jpg",
+    "india": false,
+    "picked": true
+  },
+  "meat:chicken-skin": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/31/Fresh_Raw_Chicken_Parts_on_Display.jpg/960px-Fresh_Raw_Chicken_Parts_on_Display.jpg",
+    "credit": "\"Fresh Raw Chicken Parts on Display\" by PAULIX04, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Fresh_Raw_Chicken_Parts_on_Display.jpg",
+    "india": false,
+    "picked": true
   }
 }

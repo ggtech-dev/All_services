@@ -28,7 +28,13 @@ const upload = multer({
   },
 });
 
-const num = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
+// '' / missing → null; anything that is not a real number (e.g. "abc" → NaN) is a 400, never stored.
+const num = (v) => {
+  if (v === '' || v == null) return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) throw Object.assign(new Error('Enter a valid number'), { status: 400 });
+  return n;
+};
 const bool = (v) => (v === undefined || v === null ? null : Boolean(v));
 
 // ---------- uploaded photo cleanup ----------
@@ -130,13 +136,21 @@ router.get('/services', h(async (req, res) => {
 
 const saveService = (id) => h(async (req, res) => {
   const b = req.body || {};
-  const row = await asActor(req.user.id, async (db) =>
-    (await db.query('SELECT * FROM fn_save_service($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)', [
+  const row = await asActor(req.user.id, async (db) => {
+    const saved = (await db.query('SELECT * FROM fn_save_service($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)', [
       id === null ? null : req.params.id, num(b.category_id), b.name, b.description, b.image_url, b.image_credit,
       num(b.base_price), b.price_unit, num(b.eta_minutes), bool(b.requires_license), bool(b.is_active),
       b.skill_code || null,
-    ])).rows[0]
-  );
+    ])).rows[0];
+    // daily-service options (only when the form sends them)
+    if ('price_on_bill' in b || 'window_from' in b || 'is_featured' in b) {
+      await db.query('CALL sp_set_service_options($1,$2,$3,$4,$5)', [
+        saved.id, typeof b.price_on_bill === 'boolean' ? b.price_on_bill : null,
+        num(b.window_from), num(b.window_to), typeof b.is_featured === 'boolean' ? b.is_featured : null,
+      ]);
+    }
+    return (await db.query('SELECT * FROM services WHERE id = $1', [saved.id])).rows[0];
+  });
   res.status(id === null ? 201 : 200).json(row);
 });
 router.post('/services', saveService(null));
@@ -183,12 +197,18 @@ router.get('/products', h(async (req, res) => {
 
 const saveProduct = (id) => h(async (req, res) => {
   const b = req.body || {};
-  const row = await asActor(req.user.id, async (db) =>
-    (await db.query('SELECT * FROM fn_save_product($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)', [
+  const row = await asActor(req.user.id, async (db) => {
+    const saved = (await db.query('SELECT * FROM fn_save_product($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)', [
       id === null ? null : req.params.id, num(b.service_id), b.name, b.brand, b.description, b.icon,
       b.image_url, b.image_credit, b.unit, num(b.price), num(b.mrp), bool(b.in_stock), bool(b.is_active),
-    ])).rows[0]
-  );
+    ])).rows[0];
+    // how it is sold (kg, litre…) and the cutting options (only when the form sends them)
+    if ('sell_by' in b) {
+      const opts = Array.isArray(b.note_options) ? b.note_options.filter((o) => typeof o === 'string') : [];
+      await db.query('CALL sp_set_product_selling($1,$2,$3)', [saved.id, b.sell_by, opts]);
+    }
+    return (await db.query('SELECT * FROM products WHERE id = $1', [saved.id])).rows[0];
+  });
   res.status(id === null ? 201 : 200).json(row);
 });
 router.post('/products', saveProduct(null));

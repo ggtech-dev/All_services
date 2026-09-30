@@ -3,7 +3,10 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { Modal, useLoad, useToast } from './ui.jsx';
 import MapView, { secondsAgo } from '../components/MapView.jsx';
-import { AdminShopBill, cashToCollect } from '../components/ShopBill.jsx';
+import { AdminShopBill } from '../components/ShopBill.jsx';
+import { doorPayment, feeLabel, feeStatusText } from '../components/DeliveryCharge.jsx';
+import { useSettings } from '../settings.js';
+import { qtyLabel } from '../qty.js';
 import { ACTIVE, STATUS, StatusBadge, VEHICLES, rupees, statusLabel, time, usePoll, when } from '../orderStatus.jsx';
 
 const TABS = [
@@ -144,6 +147,7 @@ function OrderLiveMap({ orderId, icon }) {
 function OrderDetail({ id, onClose, onChanged }) {
   const toast = useToast();
   const [order, setOrder] = useState(null);
+  const settings = useSettings();
   const [agentId, setAgentId] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -201,7 +205,13 @@ function OrderDetail({ id, onClose, onChanged }) {
             <h4>{order.kind === 'service' ? 'Service' : 'Items'}</h4>
             <ul className="od-items">
               {order.items.map((i) => (
-                <li key={i.id}><span>{i.icon || order.icon} {i.name} <small className="muted">{i.unit}</small></span><span>{i.qty} × {rupees(i.price)}</span></li>
+                <li key={i.id}>
+                  <span>
+                    {i.icon || order.icon} {i.name} <small className="muted">{i.sell_by === 'pack' ? i.unit : qtyLabel(i.qty, i.sell_by)}</small>
+                    {i.note && <small className="item-note">✂️ {i.note}</small>}
+                  </span>
+                  <span>{i.on_bill ? <small className="market-price">as per bill</small> : `${Number(i.qty)} × ${rupees(i.price)}`}</span>
+                </li>
               ))}
             </ul>
             <div className="totals">
@@ -213,9 +223,12 @@ function OrderDetail({ id, onClose, onChanged }) {
               ) : (
                 <div><span>Subtotal</span><span>{rupees(order.subtotal)}</span></div>
               )}
-              <div><span>Delivery</span><span>{Number(order.delivery_fee) ? rupees(order.delivery_fee) : 'Free'}</span></div>
+              <div>
+                <span>{feeLabel(order)}{feeStatusText(order) && <small className="muted"> · {feeStatusText(order)}</small>}</span>
+                <span>{Number(order.delivery_fee) ? rupees(order.delivery_fee) : 'Free'}</span>
+              </div>
               <div><span>Order total</span><span>{rupees(order.total)}</span></div>
-              <div className="grand"><span>Agent collects (cash on delivery)</span><span>{rupees(cashToCollect(order))}</span></div>
+              <div className="grand"><span>Agent collects in cash</span><span>{rupees(doorPayment(order, settings).cash)}</span></div>
             </div>
           </section>
         </div>

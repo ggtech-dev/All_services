@@ -11,7 +11,13 @@ const router = Router();
 router.use(requireAuth, requireRole('admin'));
 
 const h = (fn) => (req, res, next) => fn(req, res, next).catch(next);
-const num = (v) => (v === '' || v == null ? null : Number(v));
+// '' / missing → null; anything that is not a real number (e.g. "abc" → NaN) is a 400, never stored.
+const num = (v) => {
+  if (v === '' || v == null) return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) throw Object.assign(new Error('Enter a valid number'), { status: 400 });
+  return n;
+};
 
 // ---------- orders ----------
 router.get('/orders-stats', h(async (req, res) => {
@@ -28,7 +34,7 @@ router.get('/orders', h(async (req, res) => {
             l.name AS locality_name, cu.username AS customer_username, ag.full_name AS agent_name, ag.phone AS agent_phone,
             o.skill_code, st.name AS skill_name, st.icon AS skill_icon,
             (SELECT count(*) FROM order_items i WHERE i.order_id = o.id)::int AS item_count,
-            (SELECT string_agg(i.name || CASE WHEN i.qty > 1 THEN ' x' || i.qty ELSE '' END, ', ' ORDER BY i.id)
+            (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by), ', ' ORDER BY i.id)
                FROM order_items i WHERE i.order_id = o.id) AS summary
        FROM orders o
        JOIN localities l ON l.id = o.locality_id
@@ -245,7 +251,7 @@ router.get('/reports/orders.csv', h(async (req, res) => {
     `SELECT o.id AS "Order", to_char(o.created_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD HH24:MI') AS "Placed (IST)",
             o.status AS "Status", st.name AS "Agent type", o.contact_name AS "Customer", o.contact_phone AS "Phone",
             l.name AS "Area", o.pincode AS "Pincode",
-            (SELECT string_agg(i.name || ' x' || i.qty, '; ' ORDER BY i.id) FROM order_items i WHERE i.order_id = o.id) AS "Items",
+            (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by) || coalesce(' (' || i.note || ')', ''), '; ' ORDER BY i.id) FROM order_items i WHERE i.order_id = o.id) AS "Items",
             o.subtotal AS "Items total", o.delivery_fee AS "Delivery fee", o.total AS "Total",
             ag.full_name AS "Agent", ag.phone AS "Agent phone",
             to_char(o.delivered_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD HH24:MI') AS "Delivered (IST)",
@@ -271,6 +277,47 @@ router.get('/reports/orders.csv', h(async (req, res) => {
   res.set('Content-Disposition', `attachment; filename="orders_${from}_to_${to}.csv"`);
   res.send('﻿' + csv); // BOM so Excel shows ₹ and Telugu names correctly
 }));
+
+// ---------- delivery charges (per service) ----------
+router.get('/delivery-charges', h(async (req, res) => {
+  const { rows } = await query('SELECT fn_admin_delivery_charges() AS list');
+  res.json(rows[0].list);
+}));
+
+// body: { fee }
+router.patch('/services/:id/delivery-fee', h(async (req, res) => {
+  await asActor(req.user.id, (db) => db.query('CALL sp_set_service_delivery_fee($1,$2)', [Number(req.params.id), num(req.body?.fee)]));
+  res.status(204).end();
+}));
+
+// Same charge for a whole category. body: { category_id, fee }
+router.post('/delivery-charges/category', h(async (req, res) => {
+  const { rows } = await asActor(req.user.id, (db) =>
+    db.query('SELECT fn_set_category_delivery_fee($1,$2) AS n', [num(req.body?.category_id), num(req.body?.fee)])
+  );
+  res.json({ updated: rows[0].n });
+}));
+
+// ---------- service areas ----------
+router.get('/localities', h(async (req, res) => {
+  const { rows } = await query('SELECT fn_admin_localities() AS list');
+  res.json(rows[0].list);
+}));
+
+// Create (no id) or update an area. body: { name, pincode, lat, lng, is_active }
+const saveLocality = (withId) => h(async (req, res) => {
+  const b = req.body || {};
+  const { rows } = await asActor(req.user.id, (db) =>
+    db.query('SELECT * FROM fn_save_locality($1,$2,$3,$4,$5,$6)', [
+      withId ? Number(req.params.id) : null, typeof b.name === 'string' ? b.name : null,
+      typeof b.pincode === 'string' ? b.pincode : null, num(b.lat), num(b.lng),
+      typeof b.is_active === 'boolean' ? b.is_active : null,
+    ])
+  );
+  res.status(withId ? 200 : 201).json(rows[0]);
+});
+router.post('/localities', saveLocality(false));
+router.put('/localities/:id', saveLocality(true));
 
 // ---------- service types (which agents do which services) ----------
 router.get('/service-types', h(async (req, res) => {

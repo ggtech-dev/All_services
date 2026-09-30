@@ -24,7 +24,7 @@ export default function Navbar() {
             🛒 <span className="hide-sm">Cart</span>
             {cart.count > 0 && <span className="cart-count">{cart.count}</span>}
           </NavLink>
-          <button className="btn btn-ghost" onClick={logout} title="Logout">⎋ <span className="hide-sm">Logout</span></button>
+          <button className="btn btn-ghost" onClick={logout} title="Logout" aria-label="Logout">🚪 <span className="hide-sm">Logout</span></button>
         </div>
       </div>
     </header>

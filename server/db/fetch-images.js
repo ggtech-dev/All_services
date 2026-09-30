@@ -2,7 +2,7 @@
 // via the Openverse API and caches it in images.json (committed), so db:setup never needs the network.
 // Only missing keywords are fetched; delete an entry from images.json to re-fetch it.
 import { readFile, writeFile } from 'node:fs/promises';
-import { categories } from './catalog.js';
+import { categories, products } from './catalog.js';
 
 // keyword -> [search query, words the photo's title/tags must mention]
 const QUERIES = {
@@ -93,6 +93,51 @@ const QUERIES = {
   'furniture,moving': ['packers movers india', /mov|packer|shifting/],
   'moving,boxes': ['moving boxes', /box/],
   'courier,scooter': ['delivery scooter india', /scooter|deliver|courier/],
+  // daily services
+  'fresh,vegetables': ['vegetable vendor india', /vegetable/],
+  'fresh,meat': ['chicken mutton shop india', /chicken|mutton|meat|butcher/],
+  'fresh,milk': ['fresh milk', /milk/],
+  // items (the 8th value of a product in catalog.js)
+  'veg:tomato': ['tomatoes', /tomato/],
+  'veg:onion': ['onions market india', /onion/],
+  'veg:potato': ['potatoes', /potato/],
+  'veg:brinjal': ['brinjal', /brinjal|eggplant|aubergine/],
+  'veg:okra': ['okra ladies finger', /okra|lady'?s? ?finger|bhindi/],
+  'veg:green-chilli': ['green chillies', /green chil/],
+  'veg:carrot': ['carrots', /carrot/],
+  'veg:beans': ['green beans', /bean/],
+  'veg:cabbage': ['cabbage', /cabbage/],
+  'veg:cauliflower': ['cauliflower', /cauliflower/],
+  'veg:bottle-gourd': ['bottle gourd', /bottle gourd|lauki|calabash/],
+  'veg:ridge-gourd': ['ridge gourd', /ridge gourd|luffa|turai/],
+  'veg:bitter-gourd': ['bitter gourd', /bitter (gourd|melon)|karela/],
+  'veg:drumstick': ['drumstick vegetable moringa', /drumstick|moringa/],
+  'veg:capsicum': ['capsicum', /capsicum|bell pepper/],
+  'veg:cucumber': ['cucumbers', /cucumber/],
+  'veg:beetroot': ['beetroot', /beet/],
+  'veg:ginger': ['ginger root', /ginger/],
+  'veg:garlic': ['garlic', /garlic/],
+  'veg:raw-banana': ['raw banana plantain', /plantain|raw banana|green banana/],
+  'veg:spinach': ['spinach leaves', /spinach|palak/],
+  'veg:gongura': ['gongura roselle leaves', /gongura|roselle|sorrel/],
+  'veg:methi': ['fenugreek leaves', /fenugreek|methi/],
+  'veg:coriander': ['coriander leaves', /coriander|cilantro/],
+  'veg:curry-leaves': ['curry leaves', /curry lea/],
+  'veg:mint': ['mint leaves', /mint/],
+  'meat:chicken': ['raw chicken meat', /chicken/],
+  'meat:chicken-skin': ['chicken shop india', /chicken/],
+  'meat:boneless-chicken': ['chicken breast raw', /chicken/],
+  'meat:country-chicken': ['country chicken india', /chicken|hen|rooster/],
+  'meat:mutton': ['mutton meat shop', /mutton|goat meat|lamb/],
+  'meat:keema': ['minced meat keema', /keema|mince/],
+  'meat:prawns': ['prawns', /prawn|shrimp/],
+  'meat:rohu': ['rohu fish', /rohu|carp/],
+  'meat:katla': ['catla fish', /catla|katla|carp/],
+  'meat:murrel': ['snakehead murrel fish', /murrel|snakehead/],
+  'meat:tilapia': ['tilapia fish', /tilapia/],
+  'milk:cow': ['cow milk', /milk/],
+  'milk:buffalo': ['milkman india', /milk/],
+  'milk:packet': ['milk packets india', /milk/],
 };
 
 const CACHE = new URL('./images.json', import.meta.url);
@@ -101,7 +146,10 @@ const JUNK = /logo|png|clip ?art|icon|calendar|wallpaper|poster|republican|kitte
 const INDIA = /india|indian|mumbai|delhi|bangalore|bengaluru|chennai|hyderabad|kolkata|calcutta|kerala|pune|jaipur|goa|tamil|karnataka|andhra|telangana|rajasthan/i;
 
 const cache = JSON.parse(await readFile(CACHE, 'utf8').catch(() => '{}'));
-const keywords = [...new Set(categories.flatMap((c) => [c.image, ...c.services.map((s) => s[1])]))];
+const keywords = [...new Set([
+  ...categories.flatMap((c) => [c.image, ...c.services.map((s) => s[1])]),
+  ...Object.values(products).flatMap((items) => items.map((p) => p[7]).filter(Boolean)),
+])];
 const missing = keywords.filter((k) => !cache[k]);
 console.log(`${keywords.length} keywords, ${missing.length} to fetch`);
 
@@ -122,8 +170,57 @@ function choose(results, subject) {
   );
 }
 
-async function search(q) {
-  const res = await fetch(`https://api.openverse.org/v1/images/?q=${encodeURIComponent(q)}&page_size=20&extension=jpg&mature=false`);
+// Items (vegetables, meat, milk) and the daily-service photos: the raw product, never a cooked dish; India not required.
+const COOKED = /curry|fry|fried|pizza|pasta|salad|soup|pickle|pachdi|bhaji|naan|dinner|lunch|breakfast|recipe|cooked|roast|masala|biryani|sandwich|burger|dish|restaurant|plate|bowl|stew|grill|kebab|tikka|cake|juice|\btea\b|coffee|chai|falafel|rendang|korma|teriyaki/i;
+const RAW = /fresh|raw|market|stall|vendor|heap|pile|bunch|harvest|organic|farm|basket|crate|shop|butcher|seller/i;
+const isItem = (kw) => kw.includes(':') || kw.startsWith('fresh,');
+function chooseItem(results, subject) {
+  const re = new RegExp(subject.source, 'i');
+  const ok = results.filter((r) => usable(r) && re.test(r.title) && !COOKED.test(text(r)));
+  return ok.find((r) => RAW.test(r.title)) || ok[0];
+}
+
+// Items come from Wikimedia Commons: clear photos of single vegetables / cuts of meat, free licences, no API key.
+const COMMONS_UA = { 'User-Agent': 'AllServices/1.0 (local services app; image cache script)' };
+const stripTags = (h) => String(h || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+// the plant, the field, a sign or a painting is not what a customer buys
+const NOT_PRODUCE = /flower|blossom|plant|field|farming|growing|garden|seedling|crop|tree|sign|gallery|painting|museum|art\b|poster|facts|logo|drawing|illustration|stamp/i;
+async function commons(q, retried = false) {
+  const url = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6'
+    + `&gsrsearch=${encodeURIComponent(q + ' filetype:bitmap')}&gsrlimit=20&prop=imageinfo&iiprop=url|size|extmetadata`
+    + '&iiurlwidth=640&iiextmetadatafilter=LicenseShortName|Artist';
+  const res = await fetch(url, { headers: COMMONS_UA });
+  if (res.status === 429 && !retried) {
+    console.log('   (Commons asked us to slow down — waiting 60 s)');
+    await sleep(60000);
+    return commons(q, true);
+  }
+  if (!res.ok) throw new Error(res.status === 429 ? 'rate-limited' : `Wikimedia Commons answered ${res.status}`);
+  const pages = Object.values((await res.json()).query?.pages || {}).sort((a, b) => a.index - b.index);
+  return pages.map((p) => {
+    const i = p.imageinfo?.[0] || {};
+    const m = i.extmetadata || {};
+    const title = p.title.replace(/^File:/, '').replace(/\.[a-z]+$/i, '');
+    return {
+      title, width: i.width, height: i.height, tags: [],
+      url: (i.thumburl || i.url || '').split('?')[0],
+      attribution: `"${title}" by ${stripTags(m.Artist?.value) || 'unknown'}, ${m.LicenseShortName?.value || 'free licence'} (Wikimedia Commons)`,
+      foreign_landing_url: i.descriptionurl,
+      licensed: /^(CC|Public domain|PD|GFDL)/i.test(m.LicenseShortName?.value || ''),
+    };
+  });
+}
+// not too tall (cards are wide), on topic, raw not cooked, freely licensed
+function chooseCommons(results, subject) {
+  const re = new RegExp(subject.source, 'i');
+  const ok = results.filter((r) => r.licensed && r.width >= 400 && r.height >= 250 && r.width / r.height >= 0.9 && r.width / r.height <= 2.2
+    && re.test(r.title) && !COOKED.test(r.title) && !JUNK.test(r.title) && !NOT_PRODUCE.test(r.title));
+  return ok.find((r) => RAW.test(r.title)) || ok[0];
+}
+
+// Anonymous Openverse returns at most 20 results per page.
+async function search(q, page = 1) {
+  const res = await fetch(`https://api.openverse.org/v1/images/?q=${encodeURIComponent(q)}&page_size=20&page=${page}&extension=jpg&mature=false`);
   if (res.status === 429) throw new Error('rate-limited');
   return (await res.json()).results || [];
 }
@@ -131,10 +228,18 @@ async function search(q) {
 try {
   for (const kw of missing) {
     const [q, subject] = QUERIES[kw] || [`${kw.replace(/,/g, ' ')} india`, new RegExp(kw.split(',')[0], 'i')];
+    if (isItem(kw)) {
+      const pickC = chooseCommons(await commons(q.replace(/ india$/, '')), subject);
+      if (pickC) cache[kw] = { url: pickC.url, credit: pickC.attribution, source: pickC.foreign_landing_url, india: INDIA.test(pickC.title) };
+      console.log(pickC ? `WM ${kw}: ${pickC.title}` : `xx ${kw}: no on-topic photo found`);
+      await writeFile(CACHE, JSON.stringify(cache, null, 2));
+      await sleep(3000);
+      continue;
+    }
     let pick = choose(await search(q), subject);
     if (!pick && / india$/.test(q)) {
       await sleep(DELAY_MS);
-      pick = choose(await search(q.replace(/ india$/, '')), subject);
+      pick = (isItem(kw) ? chooseItem : choose)(await search(q.replace(/ india$/, '')), subject);
     }
     if (pick) {
       const indian = INDIA.test(text(pick));

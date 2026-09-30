@@ -3,7 +3,10 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { ACTIVE, STEPS, VEHICLES, rupees, secondsAgo, stepLabels, statusLabel, time, usePoll, when } from '../orderStatus.jsx';
 import MapView from '../components/LazyMap.jsx';
-import { CustomerShopBill, cashToCollect } from '../components/ShopBill.jsx';
+import { CustomerShopBill } from '../components/ShopBill.jsx';
+import { CustomerDoorPayment, doorPayment, feeLabel } from '../components/DeliveryCharge.jsx';
+import { cityOf, useSettings } from '../settings.js';
+import { qtyLabel } from '../qty.js';
 
 // Live map of the assigned agent coming to the customer. Refreshes every 8 seconds.
 function LiveTrack({ orderId, who, icon }) {
@@ -41,6 +44,7 @@ export default function OrderTrack() {
   const { id } = useParams();
   const [params] = useSearchParams();
   const [order, setOrder] = useState(null);
+  const settings = useSettings();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -54,6 +58,7 @@ export default function OrderTrack() {
   if (!order) return <div className="center-block"><div className="spinner" /></div>;
 
   const isService = order.kind === 'service';
+  const pay = doorPayment(order, settings);
   const who = (order.agent_title || (isService ? 'partner' : 'delivery partner')).toLowerCase();
   const stepIndex = STEPS.indexOf(order.status);
   const labels = stepLabels(order.kind);
@@ -113,6 +118,7 @@ export default function OrderTrack() {
       )}
 
       <CustomerShopBill order={order} onChanged={load} />
+      <CustomerDoorPayment order={order} />
 
       {['assigned', 'picked_up'].includes(order.status) && <LiveTrack orderId={order.id} who={who} icon={order.skill_icon} />}
 
@@ -137,8 +143,14 @@ export default function OrderTrack() {
             {order.items.map((i) => (
               <li key={i.id}>
                 <span className="summary-icon">{i.icon || order.icon}</span>
-                <div className="summary-name"><b>{i.name}</b><small className="muted">{i.unit}{i.qty > 1 && ` · ${i.qty} × ${rupees(i.price)}`}</small></div>
-                <span className="summary-price">{rupees(i.line_total)}</span>
+                <div className="summary-name">
+                  <b>{i.name}</b>
+                  <small className="muted">
+                    {i.sell_by === 'pack' ? <>{i.unit}{Number(i.qty) > 1 && ` · ${Number(i.qty)} × ${rupees(i.price)}`}</> : qtyLabel(i.qty, i.sell_by)}
+                  </small>
+                  {i.note && <small className="item-note">✂️ {i.note}</small>}
+                </div>
+                <span className="summary-price">{i.on_bill ? <small className="market-price">as per bill</small> : rupees(i.line_total)}</span>
               </li>
             ))}
           </ul>
@@ -151,10 +163,12 @@ export default function OrderTrack() {
             ) : (
               <div><span>Items</span><span>{rupees(order.subtotal)}</span></div>
             )}
-            {!isService && <div><span>Delivery</span><span>{Number(order.delivery_fee) ? rupees(order.delivery_fee) : <b className="free">FREE</b>}</span></div>}
+            {(!isService || Number(order.delivery_fee) > 0) && (
+              <div><span>{feeLabel(order)}{pay.fee > 0 && pay.feeMode === 'company_upi' ? ' (UPI to All Services)' : ''}</span><span>{pay.fee ? rupees(pay.fee) : <b className="free">FREE</b>}</span></div>
+            )}
             <div className="grand">
               <span>{order.status === 'delivered' ? 'Paid on delivery' : 'To pay on delivery'}</span>
-              <span>{rupees(cashToCollect(order))}</span>
+              <span>{rupees(pay.itemsCash + pay.fee)}</span>
             </div>
           </div>
         </section>
@@ -165,7 +179,7 @@ export default function OrderTrack() {
             <b>{order.contact_name}</b> · {order.contact_phone}<br />
             {order.address_line}<br />
             {order.landmark && <>{order.landmark}<br /></>}
-            {order.locality_name}{order.pincode && ` – ${order.pincode}`}, Hyderabad
+            {order.locality_name}{order.pincode && ` – ${order.pincode}`}, {cityOf(settings)}
           </p>
           {order.slot && <p className="muted small">🕒 {order.slot}</p>}
           {order.notes && <p className="muted small">📝 {order.notes}</p>}

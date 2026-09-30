@@ -50,15 +50,14 @@ export async function loadOrder(id, { customerId } = {}) {
   return withPhotoFlags({ ...rows[0], items: items.rows, events: events.rows });
 }
 
-// Delivery fee the customer will pay on their next product order.
+// Delivery charge for the checkout: ?products=12,15,40 (cart) or ?service=7 (booking).
 router.get('/quote', h(async (req, res) => {
-  const { rows } = await query(
-    `SELECT fn_delivery_fee_for($1) AS delivery_fee,
-            greatest(0, fn_setting_num('free_delivery_orders', 3)
-              - (SELECT count(*) FROM orders WHERE customer_id = $1 AND status <> 'cancelled'))::int AS free_left`,
-    [req.user.id]
-  );
-  res.json({ delivery_fee: Number(rows[0].delivery_fee), free_left: rows[0].free_left });
+  const products = String(req.query.products || '').split(',').filter((x) => /^\d{1,9}$/.test(x)).slice(0, 40).map(Number);
+  const service = /^\d{1,9}$/.test(String(req.query.service || '')) ? Number(req.query.service) : null;
+  const { rows } = await query('SELECT fn_delivery_quote($1,$2,$3) AS q', [req.user.id, products, service]);
+  const q = rows[0].q;
+  // + shop-bill items, and the delivery time window with the slots the customer can pick
+  res.json({ ...q, delivery_fee: Number(q.delivery_fee), base_fee: Number(q.base_fee) });
 }));
 
 // Last address used, to pre-fill checkout.
@@ -73,7 +72,10 @@ router.get('/last-address', h(async (req, res) => {
 
 router.post('/', h(async (req, res) => {
   const b = req.body || {};
-  const items = Array.isArray(b.items) ? b.items.map((i) => ({ product_id: Number(i.product_id), qty: Number(i.qty) })) : null;
+  // qty can be 1.5 (kg); note = the customer's cutting instructions for that item
+  const items = Array.isArray(b.items)
+    ? b.items.map((i) => ({ product_id: Number(i.product_id), qty: Number(i.qty), ...(typeof i.note === 'string' && { note: i.note.slice(0, 200) }) }))
+    : null;
   const order = await asActor(req.user.id, async (db) =>
     (await db.query('SELECT * FROM fn_place_order($1,$2,$3,$4,$5,$6)', [
       req.user.id, items ? JSON.stringify(items) : null, b.service_id ? Number(b.service_id) : null,
@@ -88,7 +90,7 @@ router.get('/', h(async (req, res) => {
     `SELECT o.id, o.kind, o.status, o.total, o.created_at, o.delivered_at, o.delivery_otp,
             ag.full_name AS agent_name, st.agent_title, (fn_setting_num('require_delivery_otp', 0) = 1) AS otp_required,
             (SELECT count(*) FROM order_items i WHERE i.order_id = o.id)::int AS item_count,
-            (SELECT string_agg(i.name || CASE WHEN i.qty > 1 THEN ' x' || i.qty ELSE '' END, ', ' ORDER BY i.id)
+            (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by), ', ' ORDER BY i.id)
                FROM order_items i WHERE i.order_id = o.id) AS summary
        FROM orders o LEFT JOIN users ag ON ag.id = o.agent_id
        JOIN service_types st ON st.code = o.skill_code
