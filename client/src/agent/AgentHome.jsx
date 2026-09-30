@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { api } from '../api.js';
 import { useToast } from '../admin/ui.jsx';
 import { rupees, statusLabel, time, usePoll } from '../orderStatus.jsx';
+import { AgentShopBill, cashToCollect } from '../components/ShopBill.jsx';
 
 const nearest = (list, lat, lng) =>
   list.reduce((best, l) => {
@@ -208,11 +209,17 @@ function ActiveOrder({ order, busy, run }) {
       </ul>
       {order.notes && <p className="active-note">📝 {order.notes}</p>}
       {order.slot && <p className="muted small">🕒 {order.slot}</p>}
-      <div className="collect">💵 Collect <b>{rupees(order.total)}</b> cash</div>
+      {order.kind === 'products' && (order.status === 'assigned' || order.bill_uploaded_at) && (
+        <AgentShopBill order={order} busy={busy} run={run} />
+      )}
+      <div className="collect">💵 Collect <b>{rupees(cashToCollect(order))}</b> {cashToCollect(order) > 0 ? 'from the customer (cash or UPI)' : '— nothing to collect'}</div>
 
       {order.status === 'assigned' && (
         <div className="active-buttons">
-          <button className="btn btn-primary btn-block" disabled={busy}
+          {order.bill_payment_mode === 'customer_upi' && !order.payment_confirmed_at && (
+            <small className="muted">Pick-up unlocks once the shop confirms the customer's UPI payment.</small>
+          )}
+          <button className="btn btn-primary btn-block" disabled={busy || (order.bill_payment_mode === 'customer_upi' && !order.payment_confirmed_at)}
             onClick={() => run(() => api(`/agent/orders/${order.id}/status`, { method: 'POST', body: { status: 'picked_up' } }), isService ? 'On your way!' : 'Picked up. Deliver safely!')}>
             {isService ? '🚀 Start — I\'m on the way' : '📦 Picked up — start delivery'}
           </button>

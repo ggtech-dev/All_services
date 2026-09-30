@@ -115,6 +115,17 @@ Every **service** has one type of work (`services.skill_code`) and every **agent
 - Change a service's type in **Services** (dropdown in the row); change an agent's types in **Manage agents** → agent → *Types of work*. New applicants choose their types on the apply page.
 - Customers see the right word: “Your plumber”, “Your electrician”, “Your delivery partner”.
 
+## Buying at a shop (shop bill + UPI to the shop)
+
+For item orders the agent can buy from a local shop and let the customer pay the shop directly:
+
+1. **Agent** (order accepted, at the shop): *Add shop bill* → bill amount, bill photo, and the shop's UPI QR photo — the app **reads the QR** and fills the UPI ID. (Or *I paid cash* if the shop has no UPI.)
+2. **Customer** sees the bill photo and amount, taps **Pay with UPI app** (opens GPay / PhonePe / Paytm with shop and amount filled), or scans the QR / copies the UPI ID, then uploads the payment screenshot (+ optional UTR).
+3. **Agent** sees the screenshot, checks with the shopkeeper → **Shop received payment**. Pick-up is locked until then. At the door the agent collects only what is still due (delivery fee, or bill + fee when the agent paid cash).
+4. After delivery or cancellation the **shop's QR photo and UPI ID are deleted**; the bill photo and payment screenshot stay as records.
+
+Photos are stored in `server/private_uploads/orders` and only served to that order's customer, its agent and admins. Logic: `fn_agent_upload_bill`, `fn_customer_payment_proof`, `sp_agent_confirm_payment`, `fn_clear_shop_payment_details` in [`server/db/shop_bill.sql`](server/db/shop_bill.sql).
+
 ## Reports
 
 Admin → **📈 Reports** (date range: today, yesterday, 7 / 30 days, this / last month, custom — India time):

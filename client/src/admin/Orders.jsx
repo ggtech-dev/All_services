@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { Modal, useLoad, useToast } from './ui.jsx';
 import MapView, { secondsAgo } from '../components/MapView.jsx';
+import { AdminShopBill, cashToCollect } from '../components/ShopBill.jsx';
 import { ACTIVE, STATUS, StatusBadge, VEHICLES, rupees, statusLabel, time, usePoll, when } from '../orderStatus.jsx';
 
 const TABS = [
@@ -204,12 +205,22 @@ function OrderDetail({ id, onClose, onChanged }) {
               ))}
             </ul>
             <div className="totals">
-              <div><span>Subtotal</span><span>{rupees(order.subtotal)}</span></div>
+              {order.bill_uploaded_at ? (
+                <>
+                  <div><span className="muted">App estimate</span><s className="muted">{rupees(order.subtotal)}</s></div>
+                  <div><span>Shop bill{order.bill_payment_mode === 'customer_upi' ? ' (customer paid shop by UPI)' : ' (agent paid cash)'}</span><span>{rupees(order.bill_amount)}</span></div>
+                </>
+              ) : (
+                <div><span>Subtotal</span><span>{rupees(order.subtotal)}</span></div>
+              )}
               <div><span>Delivery</span><span>{Number(order.delivery_fee) ? rupees(order.delivery_fee) : 'Free'}</span></div>
-              <div className="grand"><span>Total (COD)</span><span>{rupees(order.total)}</span></div>
+              <div><span>Order total</span><span>{rupees(order.total)}</span></div>
+              <div className="grand"><span>Agent collects (cash on delivery)</span><span>{rupees(cashToCollect(order))}</span></div>
             </div>
           </section>
         </div>
+
+        <AdminShopBill order={order} />
 
         <section className="od-agent">
           <h4>{order.agent_title}</h4>
@@ -246,7 +257,8 @@ function OrderDetail({ id, onClose, onChanged }) {
           <ol className="timeline">
             {order.events.map((e, i) => (
               <li key={i} style={{ '--c': STATUS[e.status]?.color }}>
-                <b>{statusLabel(e.status, order.kind)}</b>
+                {/* same status as the step before = a note (bill, payment...), not a new step */}
+                <b>{i > 0 && order.events[i - 1].status === e.status && e.note ? '📝 Update' : statusLabel(e.status, order.kind)}</b>
                 <span className="muted small"> · {when(e.created_at)}{e.actor_name && ` · by ${e.actor_name}${e.actor_role !== 'customer' ? ` (${e.actor_role})` : ''}`}</span>
                 {e.note && <div className="small">{e.note}</div>}
               </li>

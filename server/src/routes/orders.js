@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query, asActor } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { clearShopPaymentDetails, discardUploads, orderPhotoUpload, removeOrderFiles, sendOrderFile, uploadedName, withPhotoFlags } from '../orderFiles.js';
 
 // Customer orders: place, list, track, cancel.
 const router = Router();
@@ -46,7 +47,7 @@ export async function loadOrder(id, { customerId } = {}) {
       [id]
     ),
   ]);
-  return { ...rows[0], items: items.rows, events: events.rows };
+  return withPhotoFlags({ ...rows[0], items: items.rows, events: events.rows });
 }
 
 // Delivery fee the customer will pay on their next product order.
@@ -142,7 +143,29 @@ router.post('/:id/cancel', h(async (req, res) => {
   await asActor(req.user.id, (db) =>
     db.query('CALL sp_cancel_order($1,$2,false,$3)', [Number(req.params.id), req.user.id, req.body?.reason || null])
   );
+  await clearShopPaymentDetails(Number(req.params.id));
   res.status(204).end();
+}));
+
+// Customer uploads the screenshot of paying the shop by UPI. multipart: payment_photo, ref (optional)
+router.post('/:id/payment-proof', orderPhotoUpload(['payment_photo']), h(async (req, res) => {
+  try {
+    const { rows } = await asActor(req.user.id, (db) =>
+      db.query('SELECT fn_customer_payment_proof($1,$2,$3,$4) AS old', [
+        req.user.id, Number(req.params.id), uploadedName(req, 'payment_photo'), req.body?.ref || null,
+      ])
+    );
+    await removeOrderFiles([rows[0].old]);
+  } catch (err) {
+    await discardUploads(req);
+    throw err;
+  }
+  res.status(204).end();
+}));
+
+// Bill / shop QR / payment screenshot of the customer's own order.
+router.get('/:id/files/:kind', h(async (req, res) => {
+  await sendOrderFile(res, Number(req.params.id), req.params.kind, 'customer_id = $2', [req.user.id]);
 }));
 
 export default router;

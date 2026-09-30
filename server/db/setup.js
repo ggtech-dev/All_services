@@ -41,6 +41,7 @@ try {
   await client.query(await sql('./auth.sql'));
   await client.query(await sql('./promotions.sql'));
   await client.query(await sql('./reports.sql'));
+  await client.query(await sql('./shop_bill.sql'));
 
   await client.query('BEGIN');
 

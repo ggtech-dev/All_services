@@ -399,3 +399,44 @@ input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 2
   .promo-tiles { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 78%; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
   .promo-tile { scroll-snap-align: start; }
 }
+
+/* ---------- shop bill & UPI payment ---------- */
+.private-img { display: block; border-radius: 10px; overflow: hidden; background: #f1f5f9; border: 1px solid var(--border); flex-shrink: 0; }
+.private-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.private-img.loading { animation: pulse-bg 1.2s infinite; }
+.private-img.missing { display: grid; place-items: center; }
+@keyframes pulse-bg { 50% { background: #e2e8f0; } }
+.thumb-sm { width: 56px; height: 56px; }
+.thumb-md { width: 96px; height: 96px; }
+.qr-img { width: 170px; height: 170px; background: #fff; }
+.qr-img img { object-fit: contain; }
+.bill-top { display: flex; gap: 12px; align-items: center; }
+.bill-top > div { flex: 1; min-width: 0; }
+.bill-top h3 { font-size: 26px; margin: 2px 0; }
+.shop-bill-box { border: 1px dashed var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.shop-bill-box.filled { border-style: solid; background: #f8fafc; }
+.shop-bill-form { border: 2px solid var(--primary); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: #fff; }
+.shop-bill-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; flex: 1; }
+.shop-bill-form .form-row { display: flex; gap: 8px; }
+.shop-bill-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.file-pick { position: relative; border: 2px dashed var(--border); border-radius: 10px; padding: 12px; text-align: center; cursor: pointer; font-weight: 600; font-size: 14px; flex-direction: row !important; justify-content: center; }
+.file-pick:hover { border-color: var(--primary); }
+.file-pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.pay-status { border-radius: 10px; padding: 10px 12px; font-size: 14px; display: flex; gap: 10px; align-items: center; background: #f1f5f9; }
+.pay-status.waiting { background: #fffbeb; color: #92400e; }
+.pay-status.paid { background: #f0fdf4; color: #166534; }
+.customer-bill { display: flex; flex-direction: column; gap: 14px; }
+.customer-bill.attention { border: 2px solid #f59e0b; box-shadow: 0 0 0 4px rgba(245, 158, 11, .15); }
+.pay-box { display: flex; flex-direction: column; gap: 12px; }
+.upi-btn { font-size: 17px; padding: 14px; --accent: #16a34a; }
+.pay-alt { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+.qr-wrap { display: flex; flex-direction: column; gap: 6px; max-width: 200px; }
+.upi-id { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.upi-id b { font-size: 16px; word-break: break-all; }
+.proof-form { margin-top: 0; border-top: 1px dashed var(--border); padding-top: 12px; }
+.proof-row { display: flex; gap: 10px; align-items: center; }
+.admin-bill { background: #f8fafc; border-radius: 12px; padding: 14px; }
+.admin-bill-grid { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start; }
+.admin-bill-photos { display: flex; gap: 10px; }
+.admin-bill-photos figure { margin: 0; display: flex; flex-direction: column; gap: 4px; align-items: center; font-size: 12px; color: var(--muted); }
+@media (max-width: 700px) { .admin-bill-grid { grid-template-columns: 1fr; } }

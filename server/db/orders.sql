@@ -396,6 +396,7 @@ LANGUAGE plpgsql SET search_path FROM CURRENT AS $$
 DECLARE
   v orders;
   v_pay NUMERIC;
+  v_cash NUMERIC;
 BEGIN
   SELECT * INTO v FROM orders WHERE id = p_order_id AND agent_id = p_agent_id FOR UPDATE;
   IF NOT FOUND THEN
@@ -403,6 +404,10 @@ BEGIN
   END IF;
 
   IF p_status = 'picked_up' AND v.status = 'assigned' THEN
+    -- Shop bill paid by the customer's UPI: the shop must have confirmed it before the agent leaves.
+    IF v.bill_payment_mode = 'customer_upi' AND v.payment_confirmed_at IS NULL THEN
+      RAISE EXCEPTION 'Wait until the shop confirms the customer''s UPI payment, then tap "Shop received payment"' USING ERRCODE = '55000';
+    END IF;
     UPDATE orders SET status = 'picked_up', picked_up_at = now() WHERE id = v.id RETURNING * INTO v;
 
   ELSIF p_status = 'delivered' AND v.status = 'picked_up' THEN
@@ -414,9 +419,12 @@ BEGIN
     UPDATE orders SET status = 'delivered', delivered_at = now(), agent_earning = v_pay WHERE id = v.id RETURNING * INTO v;
     INSERT INTO agent_wallet (agent_id, type, amount, order_id, note)
     VALUES (p_agent_id, 'earning', v_pay, v.id, 'Delivery #' || v.id);
-    IF v.payment_method = 'cod' AND v.total > 0 THEN
+    -- Cash the agent collects at the door = total, minus the shop bill if the customer already paid the shop by UPI.
+    v_cash := v.total - CASE WHEN v.bill_payment_mode = 'customer_upi' AND v.payment_confirmed_at IS NOT NULL
+                             THEN coalesce(v.bill_amount, 0) ELSE 0 END;
+    IF v.payment_method = 'cod' AND v_cash > 0 THEN
       INSERT INTO agent_wallet (agent_id, type, amount, order_id, note)
-      VALUES (p_agent_id, 'cod_collected', v.total, v.id, 'Cash collected for #' || v.id);
+      VALUES (p_agent_id, 'cod_collected', v_cash, v.id, 'Cash collected for #' || v.id);
     END IF;
 
   ELSE

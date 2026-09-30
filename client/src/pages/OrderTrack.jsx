@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { ACTIVE, STEPS, VEHICLES, rupees, secondsAgo, stepLabels, statusLabel, time, usePoll, when } from '../orderStatus.jsx';
 import MapView from '../components/LazyMap.jsx';
+import { CustomerShopBill, cashToCollect } from '../components/ShopBill.jsx';
 
 // Live map of the assigned agent coming to the customer. Refreshes every 8 seconds.
 function LiveTrack({ orderId, who, icon }) {
@@ -111,6 +112,8 @@ export default function OrderTrack() {
         </ol>
       )}
 
+      <CustomerShopBill order={order} onChanged={load} />
+
       {['assigned', 'picked_up'].includes(order.status) && <LiveTrack orderId={order.id} who={who} icon={order.skill_icon} />}
 
       <div className="track-grid">
@@ -140,9 +143,19 @@ export default function OrderTrack() {
             ))}
           </ul>
           <div className="totals">
-            <div><span>Items</span><span>{rupees(order.subtotal)}</span></div>
+            {order.bill_uploaded_at ? (
+              <>
+                <div><span className="muted">App estimate</span><s className="muted">{rupees(order.subtotal)}</s></div>
+                <div><span>Shop bill{order.bill_payment_mode === 'customer_upi' ? ' (paid to shop by UPI)' : ''}</span><span>{rupees(order.bill_amount)}</span></div>
+              </>
+            ) : (
+              <div><span>Items</span><span>{rupees(order.subtotal)}</span></div>
+            )}
             {!isService && <div><span>Delivery</span><span>{Number(order.delivery_fee) ? rupees(order.delivery_fee) : <b className="free">FREE</b>}</span></div>}
-            <div className="grand"><span>{order.status === 'delivered' ? 'Paid' : 'To pay (cash on delivery)'}</span><span>{rupees(order.total)}</span></div>
+            <div className="grand">
+              <span>{order.status === 'delivered' ? 'Paid on delivery' : 'To pay on delivery'}</span>
+              <span>{rupees(cashToCollect(order))}</span>
+            </div>
           </div>
         </section>
 

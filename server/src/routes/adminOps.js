@@ -4,6 +4,7 @@ import { query, asActor } from '../db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { LIVE_SQL, TRAIL_SQL, loadOrder } from './orders.js';
 import { DOC_DIR, DOC_FIELDS, createAgent, docUpload, parseSkills } from './agent.js';
+import { clearShopPaymentDetails, sendOrderFile } from '../orderFiles.js';
 
 // Admin: manage orders and delivery agents.
 const router = Router();
@@ -71,7 +72,12 @@ router.post('/orders/:id/cancel', h(async (req, res) => {
   await asActor(req.user.id, (db) =>
     db.query('CALL sp_cancel_order($1,$2,true,$3)', [Number(req.params.id), req.user.id, req.body?.reason || null])
   );
+  await clearShopPaymentDetails(Number(req.params.id));
   res.status(204).end();
+}));
+
+router.get('/orders/:id/files/:kind', h(async (req, res) => {
+  await sendOrderFile(res, Number(req.params.id), req.params.kind);
 }));
 
 // Live position of an order's agent (for the order detail map).

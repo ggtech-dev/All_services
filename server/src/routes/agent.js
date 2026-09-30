@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 import { query, asActor } from '../db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { loadOrder } from './orders.js';
+import { clearShopPaymentDetails, discardUploads, orderPhotoUpload, removeOrderFiles, sendOrderFile, uploadedName } from '../orderFiles.js';
 
 const h = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 
@@ -175,7 +176,37 @@ router.post('/orders/:id/status', h(async (req, res) => {
   await asActor(req.user.id, (db) =>
     db.query('SELECT fn_agent_update_order($1,$2,$3,$4)', [req.user.id, Number(req.params.id), req.body?.status, req.body?.otp ?? null])
   );
+  if (req.body?.status === 'delivered') await clearShopPaymentDetails(Number(req.params.id));
   res.status(204).end();
+}));
+
+// At the shop: bill photo + amount, and how the shop gets paid.
+// multipart: amount, shop_name, mode ('customer_upi' | 'agent_cash'), upi_id, bill_photo (file), qr_photo (file)
+router.post('/orders/:id/bill', orderPhotoUpload(['bill_photo', 'qr_photo']), h(async (req, res) => {
+  const b = req.body || {};
+  try {
+    const { rows } = await asActor(req.user.id, (db) =>
+      db.query('SELECT * FROM fn_agent_upload_bill($1,$2,$3,$4,$5,$6,$7,$8)', [
+        req.user.id, Number(req.params.id), b.amount === '' || b.amount == null ? null : Number(b.amount), b.shop_name || null,
+        b.mode, b.upi_id || null, uploadedName(req, 'bill_photo'), uploadedName(req, 'qr_photo'),
+      ])
+    );
+    await removeOrderFiles([rows[0]?.old_bill_photo, rows[0]?.old_qr_photo]);
+  } catch (err) {
+    await discardUploads(req);
+    throw err;
+  }
+  res.status(204).end();
+}));
+
+// The shopkeeper has received the customer's UPI payment.
+router.post('/orders/:id/confirm-payment', h(async (req, res) => {
+  await asActor(req.user.id, (db) => db.query('CALL sp_agent_confirm_payment($1,$2)', [req.user.id, Number(req.params.id)]));
+  res.status(204).end();
+}));
+
+router.get('/orders/:id/files/:kind', h(async (req, res) => {
+  await sendOrderFile(res, Number(req.params.id), req.params.kind, 'agent_id = $2', [req.user.id]);
 }));
 
 router.post('/orders/:id/release', h(async (req, res) => {
