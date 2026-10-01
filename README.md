@@ -39,6 +39,18 @@ All_Services/
    npm run dev               # http://localhost:5173  (proxies /api and /uploads to the server)
    ```
 
+## Install as an app (PWA) — phones and laptops
+
+The website installs like an app: its own icon on the home screen / desktop, opens full-screen, starts fast.
+
+- **Run it as one server:** `cd client && npm run build`, then `cd server && npm start` → open **http://localhost:5000** (the API server also serves the built app). Or double-click **Start All Services.bat** on the Desktop.
+- **Install:** Chrome / Edge on a laptop or Android → the *Install* button in the app (home page banner, *My account*, agent *Profile*) or the install icon in the address bar. iPhone → Safari → Share → *Add to Home Screen* (the app shows these steps).
+- **What is saved on the device:** the app's screens, icons, fonts and product photos (30 days). **Never saved:** anything under `/api` — orders, prices, logins, payments, private photos — always live from the server.
+- **Offline:** the app still opens and shows *You're offline*; it reconnects by itself.
+- **Updates:** a new version is picked up automatically on the next visit.
+- **Phones need https:** browsers only allow installing from a secure address (or `localhost` on the same computer). Put the app online with https (or use a secure tunnel for testing) before customers can install it.
+- Settings: `client/vite.config.js` (manifest + caching rules), icons in `client/public/icons`, install button / offline bar in `client/src/components/InstallApp.jsx`.
+
 ## Who uses what
 
 | Who | URL | What they do |

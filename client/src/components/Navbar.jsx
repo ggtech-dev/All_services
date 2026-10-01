@@ -1,6 +1,7 @@
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
 import { useCart } from '../cart.jsx';
+import { InstallButton } from './InstallApp.jsx';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -18,6 +19,7 @@ export default function Navbar() {
             {user.role !== 'customer' && <span className="role-badge">{user.role}</span>}
           </span>
           {user.role === 'admin' && <Link to="/admin" className="btn btn-ghost">🛡️ <span className="hide-sm">Admin panel</span></Link>}
+          <InstallButton className="btn btn-ghost install-nav" label={<>📲 <span className="hide-sm">Install app</span></>} />
           <NavLink to="/orders" className="btn btn-ghost">📦 <span className="hide-sm">My orders</span></NavLink>
           <NavLink to="/account" className="btn btn-ghost" title="My account">👤 <span className="hide-sm">Account</span></NavLink>
           <NavLink to="/checkout" className="btn btn-ghost cart-link" aria-label={`Cart, ${cart.count} items`}>

@@ -194,6 +194,7 @@ export function ServiceForm({ service, categories, onClose, onSaved }) {
     eta_minutes: service.eta_minutes ?? '',
     price_on_bill: !!service.price_on_bill,
     is_featured: !!service.is_featured,
+    allows_list: !!service.allows_list,
     window_from: service.window_from ?? '',
     window_to: service.window_to ?? '',
   }));
@@ -309,6 +310,7 @@ export function ServiceForm({ service, categories, onClose, onSaved }) {
           <div className="form-row switches">
             <Switch checked={form.price_on_bill} onChange={(v) => setForm({ ...form, price_on_bill: v })} label="Price as per shop bill (no fixed prices)" />
             <Switch checked={form.is_featured} onChange={(v) => setForm({ ...form, is_featured: v })} label="Highlight on home page (Daily fresh)" />
+            <Switch checked={form.allows_list} onChange={(v) => setForm({ ...form, allows_list: v })} label="Customers can write their own list / send a photo" />
           </div>
         </fieldset>
         {error && <div className="alert">{error}</div>}

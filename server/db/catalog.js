@@ -1,3 +1,6 @@
+import { kiranaProducts } from './kirana.js';
+import { poojaProducts } from './pooja.js';
+
 // Seed catalog. Each service: [name, image keywords, starting price (₹), price unit, ETA minutes, needs licensed provider]
 // Image keywords are looked up once by fetch-images.js (Openverse, Creative Commons) and cached in images.json.
 
@@ -36,6 +39,7 @@ export const categories = [
       ['Daily Fresh Meat & Fish', 'fresh,meat', 0, 'as per market price', 60],
       ['Fresh Milk', 'fresh,milk', 0, 'organic & packet milk', 60],
       ['Kirana Delivery', 'grocery', 0, 'free delivery', 30],
+      ['Pooja Store', 'pooja,store', 0, 'as per shop bill', 60],
       ['Vegetable Delivery', 'vegetables', 0, 'free delivery', 30],
       ['Fruit Delivery', 'fruits', 0, 'free delivery', 30],
       ['Milk Delivery', 'milk', 30, 'per litre', 30],
@@ -196,20 +200,8 @@ export const products = {
     ['Bisleri Water Can', 'Bisleri', '20 L', 110, 120, '💧'],
     ['Packaged Drinking Water (case of 12)', 'Kinley', '1 L x 12', 220, 240, '🧴'],
   ],
-  'food-daily/Kirana Delivery': [
-    ['Sona Masoori Rice', '', '25 kg', 1450, 1600, '🍚'],
-    ['Toor Dal', '', '1 kg', 165, 180, '🫘'],
-    ['Chana Dal', '', '1 kg', 110, 120, '🫘'],
-    ['Sunflower Oil', 'Freedom', '1 L', 155, 170, '🛢️'],
-    ['Groundnut Oil', '', '1 L', 210, 230, '🥜'],
-    ['Whole Wheat Atta', 'Aashirvaad', '5 kg', 285, 310, '🌾'],
-    ['Sugar', '', '1 kg', 48, 52, '🍬'],
-    ['Iodised Salt', 'Tata', '1 kg', 28, 30, '🧂'],
-    ['Guntur Red Chilli Powder', '', '500 g', 160, 180, '🌶️'],
-    ['Turmeric Powder', '', '200 g', 55, 60, '🟡'],
-    ['Tamarind (Chintapandu)', '', '500 g', 90, 100, '🟤'],
-    ['Tea Powder', 'Red Label', '500 g', 280, 300, '🍵'],
-  ],
+  'food-daily/Kirana Delivery': kiranaProducts, // db/kirana.js
+  'food-daily/Pooja Store': poojaProducts, // db/pooja.js
   'food-daily/Vegetable Delivery': [
     ['Tomato (Tamata)', '', '1 kg', 30, null, '🍅'],
     ['Onion (Ullipaya)', '', '1 kg', 40, null, '🧅'],

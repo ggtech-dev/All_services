@@ -4,7 +4,9 @@ import { api } from '../api.js';
 import { useToast } from '../admin/ui.jsx';
 import { rupees, statusLabel, time, usePoll } from '../orderStatus.jsx';
 import { AgentShopBill } from '../components/ShopBill.jsx';
+import OrderExtras from '../components/OrderExtras.jsx';
 import { AgentDoorPayment, feeLabel } from '../components/DeliveryCharge.jsx';
+import { InstallBanner } from '../components/InstallApp.jsx';
 import { cityOf, useSettings } from '../settings.js';
 import { qtyLabel } from '../qty.js';
 
@@ -88,6 +90,7 @@ export default function AgentHome() {
   const s = me.stats;
   return (
     <div className="agent-stack">
+      <InstallBanner who="agent" />
       <section className={`online-card ${online ? 'is-online' : ''}`}>
         <div>
           <b>{online ? "You're online" : "You're offline"}</b>
@@ -145,6 +148,12 @@ export default function AgentHome() {
                 <span className="earn">+{rupees(s.pay_per_order)}</span>
               </div>
               <p className="avail-summary">{o.summary}</p>
+              {(o.preferred_shop || o.has_list_photo) && (
+                <p className="avail-extras">
+                  {o.preferred_shop && <span>🏪 {o.preferred_shop}</span>}
+                  {o.has_list_photo && <span>📷 List photo</span>}
+                </p>
+              )}
               <div className="avail-foot">
                 <small className="muted">{o.slot || 'ASAP'} · Collect {o.on_bill ? (Number(o.total) > 0 ? `shop bill + ${rupees(o.total)}` : 'as per shop bill') : rupees(o.total)}</small>
                 <button
@@ -210,6 +219,7 @@ function ActiveOrder({ order, busy, run }) {
         </div>
       </div>
 
+      <OrderExtras order={order} filesBase={`/agent/orders/${order.id}/files`} who="agent" />
       <ul className="active-items">
         {order.items.map((i) => (
           <li key={i.id}>
@@ -217,7 +227,7 @@ function ActiveOrder({ order, busy, run }) {
               {i.icon || '•'} {i.name} <small className="muted">{i.sell_by === 'pack' ? i.unit : ''}</small>
               {i.note && <small className="item-note">✂️ {i.note}</small>}
             </span>
-            <b>{i.sell_by === 'pack' ? `× ${Number(i.qty)}` : qtyLabel(i.qty, i.sell_by)}</b>
+            <b>{i.sell_by === 'pack' ? `× ${Number(i.qty)}` : (i.sell_by === 'custom' ? i.unit : qtyLabel(i.qty, i.sell_by))}</b>
           </li>
         ))}
       </ul>

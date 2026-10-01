@@ -10,7 +10,7 @@ import { query } from './db.js';
 export const ORDER_DIR = path.resolve(import.meta.dirname, '../private_uploads/orders');
 mkdirSync(ORDER_DIR, { recursive: true });
 
-export const FILE_COLUMN = { bill: 'bill_photo', qr: 'shop_qr_photo', proof: 'payment_proof_photo' };
+export const FILE_COLUMN = { bill: 'bill_photo', qr: 'shop_qr_photo', proof: 'payment_proof_photo', list: 'list_photo' };
 
 export const orderPhotoUpload = (fields) =>
   multer({
@@ -53,7 +53,8 @@ export async function sendOrderFile(res, orderId, kind, where = 'true', params =
 // Replace file names in API responses with simple "is there a photo" flags.
 export function withPhotoFlags(order) {
   if (!order) return order;
-  const out = { ...order, has_bill_photo: !!order.bill_photo, has_shop_qr: !!order.shop_qr_photo, has_payment_proof: !!order.payment_proof_photo };
+  const out = { ...order, has_bill_photo: !!order.bill_photo, has_shop_qr: !!order.shop_qr_photo, has_payment_proof: !!order.payment_proof_photo, has_list_photo: !!order.list_photo };
+  delete out.list_photo;
   delete out.bill_photo;
   delete out.shop_qr_photo;
   delete out.payment_proof_photo;

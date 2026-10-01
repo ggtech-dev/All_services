@@ -34,7 +34,7 @@ router.get('/orders', h(async (req, res) => {
             l.name AS locality_name, cu.username AS customer_username, ag.full_name AS agent_name, ag.phone AS agent_phone,
             o.skill_code, st.name AS skill_name, st.icon AS skill_icon,
             (SELECT count(*) FROM order_items i WHERE i.order_id = o.id)::int AS item_count,
-            (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by), ', ' ORDER BY i.id)
+            (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by, i.unit), ', ' ORDER BY i.id)
                FROM order_items i WHERE i.order_id = o.id) AS summary
        FROM orders o
        JOIN localities l ON l.id = o.locality_id
@@ -251,7 +251,7 @@ router.get('/reports/orders.csv', h(async (req, res) => {
     `SELECT o.id AS "Order", to_char(o.created_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD HH24:MI') AS "Placed (IST)",
             o.status AS "Status", st.name AS "Agent type", o.contact_name AS "Customer", o.contact_phone AS "Phone",
             l.name AS "Area", o.pincode AS "Pincode",
-            (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by) || coalesce(' (' || i.note || ')', ''), '; ' ORDER BY i.id) FROM order_items i WHERE i.order_id = o.id) AS "Items",
+            (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by, i.unit) || coalesce(' (' || i.note || ')', ''), '; ' ORDER BY i.id) FROM order_items i WHERE i.order_id = o.id) AS "Items",
             o.subtotal AS "Items total", o.delivery_fee AS "Delivery fee", o.total AS "Total",
             ag.full_name AS "Agent", ag.phone AS "Agent phone",
             to_char(o.delivered_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD HH24:MI') AS "Delivered (IST)",
@@ -297,6 +297,28 @@ router.post('/delivery-charges/category', h(async (req, res) => {
   );
   res.json({ updated: rows[0].n });
 }));
+
+// ---------- shops (where agents buy) ----------
+router.get('/shops', h(async (req, res) => {
+  const { rows } = await query('SELECT fn_admin_shops() AS list');
+  res.json(rows[0].list);
+}));
+
+// Create (no id) or update a shop. body: { name, locality_id, address, phone, service_ids: [..], is_active }
+const saveShop = (withId) => h(async (req, res) => {
+  const b = req.body || {};
+  const str = (v) => (typeof v === 'string' ? v : null);
+  const { rows } = await asActor(req.user.id, (db) =>
+    db.query('SELECT * FROM fn_save_shop($1,$2,$3,$4,$5,$6,$7)', [
+      withId ? Number(req.params.id) : null, str(b.name), num(b.locality_id), str(b.address), str(b.phone),
+      Array.isArray(b.service_ids) ? b.service_ids.map(Number).filter(Number.isInteger) : [],
+      typeof b.is_active === 'boolean' ? b.is_active : null,
+    ])
+  );
+  res.status(withId ? 200 : 201).json(rows[0]);
+});
+router.post('/shops', saveShop(false));
+router.put('/shops/:id', saveShop(true));
 
 // ---------- service areas ----------
 router.get('/localities', h(async (req, res) => {

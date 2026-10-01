@@ -41,7 +41,7 @@ export const upiLink = (order) =>
 // ---------- agent: at the shop ----------
 export function AgentShopBill({ order, busy, run }) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ amount: '', shop_name: '', mode: 'customer_upi', upi_id: '' });
+  const [form, setForm] = useState({ amount: '', shop_name: order.preferred_shop || '', mode: 'customer_upi', upi_id: '' });
   const [billFile, setBillFile] = useState(null);
   const [qrFile, setQrFile] = useState(null);
   const [qrMsg, setQrMsg] = useState('');
@@ -54,7 +54,7 @@ export function AgentShopBill({ order, busy, run }) {
   const startEdit = () => {
     setForm({
       amount: hasBill ? String(Number(order.bill_amount)) : '',
-      shop_name: order.shop_name || '',
+      shop_name: order.shop_name || order.preferred_shop || '',
       mode: order.bill_payment_mode || 'customer_upi',
       upi_id: order.shop_upi_id || '',
     });

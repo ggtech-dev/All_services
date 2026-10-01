@@ -50,28 +50,39 @@ CREATE OR REPLACE TRIGGER orders_event AFTER INSERT OR UPDATE ON orders FOR EACH
 -- ============ customer: place / cancel ============
 
 -- Places an order. Prices always come from the database, never from the browser.
---   p_items:      [{"product_id": 1, "qty": 2, "note": "curry cut"}, ...]   (product order; qty 1.5 for kg items)
+--   p_items:      product order, any mix of
+--                   {"product_id": 1, "qty": 2, "note": "curry cut"}           (qty 1.5 for kg items)
+--                   {"service_id": 19, "name": "Sugar", "qty_text": "2 kg"}     (customer's own list — kirana etc.)
 --   p_service_id: a service to book instead of products
 --   p_contact:    {"name","phone","address_line","landmark","locality_id","pincode"}
+--   p_list_photo: file name of a photo of the customer's handwritten list (already saved by the API)
+--   p_shop_id / p_shop_name: the shop the customer wants the agent to buy from (optional)
+DROP FUNCTION IF EXISTS fn_place_order(INT, JSONB, INT, JSONB, TEXT, TEXT);
 CREATE OR REPLACE FUNCTION fn_place_order(
-  p_customer_id INT, p_items JSONB, p_service_id INT, p_contact JSONB, p_slot TEXT, p_notes TEXT
+  p_customer_id INT, p_items JSONB, p_service_id INT, p_contact JSONB, p_slot TEXT, p_notes TEXT,
+  p_list_photo TEXT DEFAULT NULL, p_shop_id INT DEFAULT NULL, p_shop_name TEXT DEFAULT NULL
 ) RETURNS orders
 LANGUAGE plpgsql SET search_path FROM CURRENT AS $$
 DECLARE
-  v        orders;
-  v_item   JSONB;
-  v_prod   RECORD;
-  v_svc    services;
-  v_qty    NUMERIC;
-  v_price  NUMERIC;
-  v_win    RECORD;
-  v_sub    NUMERIC := 0;
-  v_fee    NUMERIC := 0;
-  v_base   NUMERIC := 0;
-  v_kind   TEXT;
-  v_skills TEXT[] := ARRAY[]::TEXT[];
-  v_skill  TEXT;
-  v_phone  TEXT := regexp_replace(coalesce(p_contact->>'phone', ''), '\D', '', 'g');
+  v          orders;
+  v_item     JSONB;
+  v_prod     RECORD;
+  v_svc      services;
+  v_lsvc     RECORD;
+  v_qty      NUMERIC;
+  v_price    NUMERIC;
+  v_win      RECORD;
+  v_sub      NUMERIC := 0;
+  v_fee      NUMERIC := 0;
+  v_base     NUMERIC := 0;
+  v_kind     TEXT;
+  v_skills   TEXT[] := ARRAY[]::TEXT[];
+  v_skill    TEXT;
+  v_services INT[];
+  v_name     TEXT;
+  v_qtytext  TEXT;
+  v_shopname TEXT := nullif(left(trim(regexp_replace(coalesce(p_shop_name, ''), '\s+', ' ', 'g')), 80), '');
+  v_phone    TEXT := regexp_replace(coalesce(p_contact->>'phone', ''), '\D', '', 'g');
 BEGIN
   -- contact & address
   IF coalesce(trim(p_contact->>'name'), '') = '' THEN
@@ -106,25 +117,41 @@ BEGIN
     IF jsonb_array_length(p_items) > 40 THEN
       RAISE EXCEPTION 'Too many different items in one order (max 40)' USING ERRCODE = '22023';
     END IF;
+    -- own-list lines only for services that take lists (checked first, so the message is the right one)
+    IF EXISTS (SELECT 1 FROM jsonb_array_elements(p_items) x
+                WHERE x->>'product_id' IS NULL
+                  AND NOT EXISTS (SELECT 1 FROM services s WHERE s.id::text = x->>'service_id' AND s.is_active AND s.allows_list)) THEN
+      RAISE EXCEPTION 'Your own list can only be sent for kirana and similar shops' USING ERRCODE = '22023';
+    END IF;
+    -- every service in the cart: of the picked products, and of the customer's own list lines
+    v_services := ARRAY(
+      SELECT p.service_id FROM products p
+       WHERE p.id IN (SELECT (x->>'product_id')::int FROM jsonb_array_elements(p_items) x WHERE x->>'product_id' ~ '^\d{1,9}$')
+      UNION
+      SELECT (x->>'service_id')::int FROM jsonb_array_elements(p_items) x
+       WHERE x->>'product_id' IS NULL AND x->>'service_id' ~ '^\d{1,9}$');
     -- One trip: a cart from several shops pays the highest delivery charge among them.
-    SELECT coalesce(max(s.delivery_fee), 0) INTO v_base
-      FROM products p JOIN services s ON s.id = p.service_id
-     WHERE p.id IN (SELECT (x->>'product_id')::int FROM jsonb_array_elements(p_items) x WHERE x->>'product_id' ~ '^\d{1,9}$');
+    SELECT coalesce(max(s.delivery_fee), 0) INTO v_base FROM services s WHERE s.id = ANY(v_services);
     v_fee := fn_delivery_fee_for(p_customer_id, v_base);
 
     -- Daily services deliver only in their time window (e.g. 6–10 AM): the slot must be one we offered.
-    SELECT * INTO v_win FROM fn_cart_window(
-      ARRAY(SELECT (x->>'product_id')::int FROM jsonb_array_elements(p_items) x WHERE x->>'product_id' ~ '^\d{1,9}$'), NULL);
+    SELECT * INTO v_win FROM fn_window_of(v_services);
     IF v_win.conflict THEN
       RAISE EXCEPTION 'Some items in your cart are delivered at different times of the day. Please order them separately.' USING ERRCODE = '22023';
     END IF;
     IF v_win.win_from IS NOT NULL AND NOT (coalesce(trim(p_slot), '') = ANY(fn_delivery_slots(v_win.win_from, v_win.win_to))) THEN
       RAISE EXCEPTION 'Please choose a delivery time between % and %', fn_hour_label(v_win.win_from), fn_hour_label(v_win.win_to) USING ERRCODE = '22023';
     END IF;
+
+    -- the shop to buy from: one of ours (selling for this cart), or a name the customer typed
+    IF p_shop_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM shops WHERE id = p_shop_id AND is_active AND service_ids && v_services) THEN
+      RAISE EXCEPTION 'Please choose the shop again from the list' USING ERRCODE = '22023';
+    END IF;
   END IF;
 
   INSERT INTO orders (customer_id, kind, contact_name, contact_phone, address_line, landmark, locality_id, pincode,
-                      slot, notes, subtotal, delivery_fee, total, delivery_otp, skill_code, dest_lat, dest_lng)
+                      slot, notes, subtotal, delivery_fee, total, delivery_otp, skill_code, dest_lat, dest_lng,
+                      list_photo, preferred_shop_id, preferred_shop_name)
   VALUES (p_customer_id, v_kind, trim(p_contact->>'name'), v_phone, trim(p_contact->>'address_line'),
           nullif(trim(p_contact->>'landmark'), ''), (p_contact->>'locality_id')::int,
           nullif(trim(p_contact->>'pincode'), ''), nullif(trim(p_slot), ''), nullif(trim(p_notes), ''),
@@ -135,7 +162,10 @@ BEGIN
                THEN round((p_contact->>'lat')::numeric, 6) END,
           CASE WHEN (p_contact->>'lat') ~ '^-?\d+(\.\d+)?$' AND (p_contact->>'lat')::numeric BETWEEN 6 AND 37.5
                 AND (p_contact->>'lng') ~ '^-?\d+(\.\d+)?$' AND (p_contact->>'lng')::numeric BETWEEN 68 AND 97.5
-               THEN round((p_contact->>'lng')::numeric, 6) END)
+               THEN round((p_contact->>'lng')::numeric, 6) END,
+          CASE WHEN v_kind = 'products' THEN nullif(p_list_photo, '') END,
+          CASE WHEN v_kind = 'products' THEN p_shop_id END,
+          CASE WHEN v_kind = 'products' AND p_shop_id IS NULL THEN v_shopname END)
   RETURNING * INTO v;
 
   IF v_kind = 'service' THEN
@@ -143,9 +173,32 @@ BEGIN
     VALUES (v.id, v_svc.id, v_svc.name, v_svc.price_unit, v_svc.base_price, 1, v_svc.base_price);
   ELSE
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_items) LOOP
+      IF v_item->>'product_id' IS NULL THEN
+        -- a line of the customer's own list: "Sugar — 2 kg", priced by the shop bill
+        SELECT s.id, s.name, s.skill_code INTO v_lsvc FROM services s JOIN categories c ON c.id = s.category_id
+         WHERE s.id = CASE WHEN v_item->>'service_id' ~ '^\d{1,9}$' THEN (v_item->>'service_id')::int END
+           AND s.is_active AND c.is_active AND s.allows_list;
+        IF NOT FOUND THEN
+          RAISE EXCEPTION 'Your own list can only be sent for kirana and similar shops' USING ERRCODE = '22023';
+        END IF;
+        v_name := left(trim(regexp_replace(coalesce(v_item->>'name', ''), '\s+', ' ', 'g')), 80);
+        v_qtytext := left(trim(regexp_replace(coalesce(v_item->>'qty_text', ''), '\s+', ' ', 'g')), 30);
+        IF length(v_name) < 2 THEN
+          RAISE EXCEPTION 'Write the item name for every line of your list' USING ERRCODE = '22023';
+        END IF;
+        IF v_qtytext = '' THEN
+          RAISE EXCEPTION 'Write how much you need of %', v_name USING ERRCODE = '22023';
+        END IF;
+        INSERT INTO order_items (order_id, service_id, name, unit, price, qty, line_total, sell_by, on_bill, note)
+        VALUES (v.id, v_lsvc.id, v_name, v_qtytext, 0, 1, 0, 'custom', true,
+                nullif(left(trim(regexp_replace(coalesce(v_item->>'note', ''), '\s+', ' ', 'g')), 200), ''));
+        v_skills := array_append(v_skills, v_lsvc.skill_code);
+        CONTINUE;
+      END IF;
+
       SELECT p.id, p.name, p.brand, p.unit, p.price, p.in_stock, p.sell_by, p.note_options, s.skill_code, s.price_on_bill INTO v_prod
         FROM products p JOIN services s ON s.id = p.service_id
-       WHERE p.id = (v_item->>'product_id')::int AND p.is_active AND s.is_active;
+       WHERE p.id = CASE WHEN v_item->>'product_id' ~ '^\d{1,9}$' THEN (v_item->>'product_id')::int END AND p.is_active AND s.is_active;
       IF NOT FOUND THEN
         RAISE EXCEPTION 'An item in your cart is no longer available. Please remove it and try again.' USING ERRCODE = '22023';
       END IF;

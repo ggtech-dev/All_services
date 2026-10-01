@@ -15,6 +15,7 @@ export async function loadOrder(id, { customerId } = {}) {
     `SELECT o.*, l.name AS locality_name, l.lat AS locality_lat, l.lng AS locality_lng,
             cu.full_name AS customer_name, cu.username AS customer_username, cu.phone AS customer_phone,
             ag.full_name AS agent_name, ag.phone AS agent_phone, a.vehicle_type, a.vehicle_number,
+            coalesce(sh.name, o.preferred_shop_name) AS preferred_shop, sh.phone AS preferred_shop_phone, shl.name AS preferred_shop_area,
             (fn_setting_num('require_delivery_otp', 0) = 1) AS otp_required,
             s.name AS service_name, st.name AS skill_name, st.agent_title, st.icon AS skill_icon,
             (SELECT c.icon FROM order_items i
@@ -28,6 +29,8 @@ export async function loadOrder(id, { customerId } = {}) {
        JOIN service_types st ON st.code = o.skill_code
        LEFT JOIN agents a ON a.user_id = o.agent_id
        LEFT JOIN users ag ON ag.id = o.agent_id
+       LEFT JOIN shops sh ON sh.id = o.preferred_shop_id
+       LEFT JOIN localities shl ON shl.id = sh.locality_id
        LEFT JOIN LATERAL (SELECT s.name FROM order_items i JOIN services s ON s.id = i.service_id
                            WHERE i.order_id = o.id LIMIT 1) s ON true
       WHERE o.id = $1 AND ($2::int IS NULL OR o.customer_id = $2)`,
@@ -50,11 +53,13 @@ export async function loadOrder(id, { customerId } = {}) {
   return withPhotoFlags({ ...rows[0], items: items.rows, events: events.rows });
 }
 
-// Delivery charge for the checkout: ?products=12,15,40 (cart) or ?service=7 (booking).
+// Delivery charge for the checkout: ?products=12,15,40 (cart) or ?service=7 (booking);
+// &lists=19 = services the customer wrote their own list for (kirana…).
 router.get('/quote', h(async (req, res) => {
   const products = String(req.query.products || '').split(',').filter((x) => /^\d{1,9}$/.test(x)).slice(0, 40).map(Number);
+  const lists = String(req.query.lists || '').split(',').filter((x) => /^\d{1,9}$/.test(x)).slice(0, 40).map(Number);
   const service = /^\d{1,9}$/.test(String(req.query.service || '')) ? Number(req.query.service) : null;
-  const { rows } = await query('SELECT fn_delivery_quote($1,$2,$3) AS q', [req.user.id, products, service]);
+  const { rows } = await query('SELECT fn_delivery_quote($1,$2,$3,$4) AS q', [req.user.id, products, service, lists]);
   const q = rows[0].q;
   // + shop-bill items, and the delivery time window with the slots the customer can pick
   res.json({ ...q, delivery_fee: Number(q.delivery_fee), base_fee: Number(q.base_fee) });
@@ -70,19 +75,35 @@ router.get('/last-address', h(async (req, res) => {
   res.json(rows[0] || null);
 }));
 
-router.post('/', h(async (req, res) => {
-  const b = req.body || {};
-  // qty can be 1.5 (kg); note = the customer's cutting instructions for that item
+// JSON, or multipart with the order in "data" and an optional "list_photo" (photo of a handwritten list).
+router.post('/', orderPhotoUpload(['list_photo']), h(async (req, res) => {
+  let b = req.body || {};
+  try {
+    if (typeof b.data === 'string') b = JSON.parse(b.data);
+  } catch {
+    await discardUploads(req);
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+  const text = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
+  // products: qty can be 1.5 (kg), note = cutting instructions · own list: { service_id, name, qty_text }
   const items = Array.isArray(b.items)
-    ? b.items.map((i) => ({ product_id: Number(i.product_id), qty: Number(i.qty), ...(typeof i.note === 'string' && { note: i.note.slice(0, 200) }) }))
+    ? b.items.map((i) => (i && i.product_id != null
+      ? { product_id: Number(i.product_id), qty: Number(i.qty), note: text(i.note, 200) }
+      : { service_id: Number(i?.service_id), name: text(i?.name, 120), qty_text: text(i?.qty_text, 60), note: text(i?.note, 200) }))
     : null;
-  const order = await asActor(req.user.id, async (db) =>
-    (await db.query('SELECT * FROM fn_place_order($1,$2,$3,$4,$5,$6)', [
-      req.user.id, items ? JSON.stringify(items) : null, b.service_id ? Number(b.service_id) : null,
-      JSON.stringify(b.contact || {}), b.slot || null, b.notes || null,
-    ])).rows[0]
-  );
-  res.status(201).json(order);
+  try {
+    const order = await asActor(req.user.id, async (db) =>
+      (await db.query('SELECT * FROM fn_place_order($1,$2,$3,$4,$5,$6,$7,$8,$9)', [
+        req.user.id, items ? JSON.stringify(items) : null, b.service_id ? Number(b.service_id) : null,
+        JSON.stringify(b.contact || {}), b.slot || null, b.notes || null,
+        uploadedName(req, 'list_photo'), /^\d{1,9}$/.test(String(b.shop_id ?? '')) ? Number(b.shop_id) : null, text(b.shop_name, 120) || null,
+      ])).rows[0]
+    );
+    res.status(201).json(withPhotoFlags(order));
+  } catch (err) {
+    await discardUploads(req);
+    throw err;
+  }
 }));
 
 router.get('/', h(async (req, res) => {
@@ -90,7 +111,7 @@ router.get('/', h(async (req, res) => {
     `SELECT o.id, o.kind, o.status, o.total, o.created_at, o.delivered_at, o.delivery_otp,
             ag.full_name AS agent_name, st.agent_title, (fn_setting_num('require_delivery_otp', 0) = 1) AS otp_required,
             (SELECT count(*) FROM order_items i WHERE i.order_id = o.id)::int AS item_count,
-            (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by), ', ' ORDER BY i.id)
+            (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by, i.unit), ', ' ORDER BY i.id)
                FROM order_items i WHERE i.order_id = o.id) AS summary
        FROM orders o LEFT JOIN users ag ON ag.id = o.agent_id
        JOIN service_types st ON st.code = o.skill_code

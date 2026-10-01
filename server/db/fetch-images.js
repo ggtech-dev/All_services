@@ -3,6 +3,8 @@
 // Only missing keywords are fetched; delete an entry from images.json to re-fetch it.
 import { readFile, writeFile } from 'node:fs/promises';
 import { categories, products } from './catalog.js';
+import { kiranaPhotoQueries } from './kirana.js';
+import { poojaPhotoQueries } from './pooja.js';
 
 // keyword -> [search query, words the photo's title/tags must mention]
 const QUERIES = {
@@ -139,6 +141,9 @@ const QUERIES = {
   'milk:buffalo': ['milkman india', /milk/],
   'milk:packet': ['milk packets india', /milk/],
 };
+
+Object.assign(QUERIES, kiranaPhotoQueries, poojaPhotoQueries);
+QUERIES['pooja,store'] = ['pooja items india', /pooja|puja|worship|diya|offering/];
 
 const CACHE = new URL('./images.json', import.meta.url);
 const DELAY_MS = 3500; // Openverse anonymous rate limit is ~20 requests/minute

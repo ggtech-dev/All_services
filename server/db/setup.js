@@ -43,6 +43,7 @@ try {
   await client.query(await sql('./reports.sql'));
   await client.query(await sql('./shop_bill.sql'));
   await client.query(await sql('./daily_fresh.sql')); // before delivery.sql (its quote uses the delivery windows)
+  await client.query(await sql('./shopping_list.sql')); // customer's own list, list photo, shops
   await client.query(await sql('./delivery.sql'));
 
   await client.query('BEGIN');
@@ -95,14 +96,15 @@ try {
     const serviceName = key.slice(key.indexOf('/') + 1); // service names can contain "/"
     const svc = await client.query('SELECT id, slug FROM services WHERE slug = $1', [`${catSlug}-${slugify(serviceName)}`]);
     if (!svc.rows[0]) throw new Error(`Seed products: service "${key}" not found`);
-    for (const [pi, [name, brand, unit, price, mrp, icon, sellBy = 'pack', imageKw, noteOptions]] of items.entries()) {
+    for (const [pi, [name, brand, unit, price, mrp, icon, sellBy = 'pack', imageKw, noteOptions, section]] of items.entries()) {
       const img = imageKw ? image(imageKw) : {};
       const slug = `${svc.rows[0].slug}-${slugify(name)}`;
       const r = await client.query(
-        `INSERT INTO products (service_id, slug, name, brand, unit, price, mrp, icon, sort_order, sell_by, image_url, image_credit, note_options)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT (slug) DO NOTHING`,
-        [svc.rows[0].id, slug, name, brand || null, unit, price, mrp, icon, pi, sellBy, img.url, img.credit, noteOptions || null]
+        `INSERT INTO products (service_id, slug, name, brand, unit, price, mrp, icon, sort_order, sell_by, image_url, image_credit, note_options, section)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT (slug) DO NOTHING`,
+        [svc.rows[0].id, slug, name, brand || null, unit, price, mrp, icon, pi, sellBy, img.url, img.credit, noteOptions || null, section || null]
       );
+      if (section) await client.query('UPDATE products SET section = $2 WHERE slug = $1 AND section IS NULL', [slug, section]);
       productCount += r.rowCount;
       if (img.url) {
         // a photo fetched later fills an empty one; --refresh-images replaces it (admin-uploaded photos are kept otherwise)
@@ -204,6 +206,57 @@ try {
     }
     await client.query("INSERT INTO site_settings (key, value) VALUES ('seeded_daily_fresh', current_date::text)");
     console.log('Added the daily services (vegetables, meat & fish, milk) and their promotions.');
+  }
+
+  // One time (Phase 2): the top services, in this order — Fresh Vegetables, Fresh Meat & Fish, Fresh Milk, Kirana.
+  // Kirana: no fixed prices (shop bill), customers may also write their own list or send a photo of it.
+  // Food & Daily-Use comes first on the home page. Later admin changes are kept.
+  const kiranaDone = await client.query("SELECT 1 FROM site_settings WHERE key = 'migrated_kirana_list'");
+  if (!kiranaDone.rowCount) {
+    await client.query(`UPDATE services SET sort_order = sort_order + 10
+                         WHERE category_id = (SELECT id FROM categories WHERE slug = 'food-daily')`);
+    const top = ['food-daily-fresh-vegetables', 'food-daily-daily-fresh-meat-fish', 'food-daily-fresh-milk', 'food-daily-kirana-delivery'];
+    for (const [i, slug] of top.entries()) await client.query('UPDATE services SET sort_order = $2 WHERE slug = $1', [slug, i]);
+    await client.query(
+      `UPDATE services SET price_on_bill = true, allows_list = true, is_featured = true, price_unit = 'as per shop bill',
+              description = 'Groceries from your nearby kirana shop. Pick items from our list, write your own list, or send a photo of it — you pay as per the shop bill.'
+        WHERE slug = 'food-daily-kirana-delivery'`
+    );
+    await client.query("UPDATE categories SET sort_order = -1 WHERE slug = 'food-daily'");
+    await client.query("INSERT INTO site_settings (key, value) VALUES ('migrated_kirana_list', current_date::text)");
+    console.log('Kirana: price as per shop bill + own list; top services ordered.');
+  }
+
+  // One time: the full kirana catalog (db/kirana.js) replaces the first short list. Old items that are not in the
+  // catalog any more are hidden (not deleted: old orders point to them).
+  const kiranaCatalog = await client.query("SELECT 1 FROM site_settings WHERE key = 'seeded_kirana_catalog'");
+  if (!kiranaCatalog.rowCount) {
+    const keep = products['food-daily/Kirana Delivery'].map(([name]) => `food-daily-kirana-delivery-${slugify(name)}`);
+    const hidden = await client.query(
+      `UPDATE products SET is_active = false WHERE service_id = (SELECT id FROM services WHERE slug = 'food-daily-kirana-delivery')
+         AND NOT (slug = ANY($1)) AND is_active`,
+      [keep]
+    );
+    await client.query("INSERT INTO site_settings (key, value) VALUES ('seeded_kirana_catalog', current_date::text)");
+    console.log(`Kirana catalog: ${keep.length} items (${hidden.rowCount} old items hidden).`);
+  }
+
+  // One time: the Pooja Store — like Kirana (price as per shop bill, customers may write their own list or send a
+  // photo), right after Kirana, regular agents. The pooja items move out of Kirana (hidden there, not deleted).
+  const poojaDone = await client.query("SELECT 1 FROM site_settings WHERE key = 'seeded_pooja_store'");
+  if (!poojaDone.rowCount) {
+    await client.query(
+      `UPDATE services SET price_on_bill = true, allows_list = true, skill_code = 'delivery', sort_order = 4,
+              price_unit = 'as per shop bill', delivery_fee = coalesce(fn_setting_num('delivery_fee', 30), 30),
+              description = 'Everything for your daily pooja — diyas, agarbatti, camphor, kumkum, flowers and more. Pick items, write your own list or send a photo — you pay as per the shop bill.'
+        WHERE slug = 'food-daily-pooja-store'`
+    );
+    await client.query(
+      `UPDATE products SET is_active = false
+        WHERE service_id = (SELECT id FROM services WHERE slug = 'food-daily-kirana-delivery') AND section = 'Pooja Needs'`
+    );
+    await client.query("INSERT INTO site_settings (key, value) VALUES ('seeded_pooja_store', current_date::text)");
+    console.log('Pooja Store added (pooja items moved out of Kirana).');
   }
 
   // Order numbers start at #1001.

@@ -121,9 +121,11 @@ router.get('/available', h(async (req, res) => {
   const { rows } = await query(
     `SELECT o.id, o.kind, o.total, o.delivery_fee, o.slot, o.created_at, l.name AS locality_name, o.pincode,
             EXISTS (SELECT 1 FROM order_items i WHERE i.order_id = o.id AND i.on_bill) AS on_bill,
+            (SELECT coalesce(sh.name, o.preferred_shop_name) FROM (SELECT 1) x LEFT JOIN shops sh ON sh.id = o.preferred_shop_id) AS preferred_shop,
+            (o.list_photo IS NOT NULL) AS has_list_photo,
             st.name AS skill_name, st.icon AS skill_icon,
             (SELECT count(*) FROM order_items i WHERE i.order_id = o.id)::int AS item_count,
-            (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by), ', ' ORDER BY i.id)
+            (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by, i.unit), ', ' ORDER BY i.id)
                FROM order_items i WHERE i.order_id = o.id) AS summary,
             CASE WHEN me.lat IS NOT NULL
                  THEN fn_distance_km(me.lat, me.lng, coalesce(o.dest_lat, l.lat), coalesce(o.dest_lng, l.lng)) END AS distance_km
@@ -154,7 +156,7 @@ router.get('/orders', h(async (req, res) => {
   const { rows } = await query(
     `SELECT o.id, o.kind, o.status, o.total, o.agent_earning, o.created_at, o.assigned_at, o.delivered_at,
             o.contact_name, l.name AS locality_name,
-            (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by), ', ' ORDER BY i.id)
+            (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by, i.unit), ', ' ORDER BY i.id)
                FROM order_items i WHERE i.order_id = o.id) AS summary
        FROM orders o JOIN localities l ON l.id = o.locality_id
       WHERE o.agent_id = $1 AND (CASE WHEN $2 THEN o.status IN ('assigned', 'picked_up') ELSE o.status IN ('delivered', 'cancelled') END)

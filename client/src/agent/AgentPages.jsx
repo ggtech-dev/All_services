@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { CompanyQr } from '../components/DeliveryCharge.jsx';
+import { InstallButton } from '../components/InstallApp.jsx';
 import { StatusBadge, VEHICLES, rupees, when } from '../orderStatus.jsx';
 import AccountSecurity from '../components/AccountSecurity.jsx';
 
@@ -160,6 +161,7 @@ export function AgentProfile() {
         </dl>
       </section>
       <AccountSecurity />
+      <InstallButton />
       <p className="muted small center">To change your name, phone, vehicle or documents, please contact the admin.</p>
       <button className="btn btn-ghost btn-block" onClick={logout}>⎋ Logout</button>
     </div>

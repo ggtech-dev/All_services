@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './auth.jsx';
 import { countOf, nextQty, prevQty } from './qty.js';
+import { dataUrlToFile, shrinkPhoto } from './photos.js';
 
 // Shopping cart kept in this browser, per logged-in user. Prices here are only for display:
 // the server recalculates everything from the database when the order is placed.
@@ -32,6 +33,32 @@ export function CartProvider({ children }) {
     }
   }, [cart]);
 
+  // The customer's own list (kirana…): typed lines and a (made smaller) photo of a handwritten list are kept
+  // like the cart, so a page reload doesn't lose them.
+  const listKey = user ? `as_list_${user.id}` : null;
+  const readPhoto = (k) => {
+    try {
+      return JSON.parse(localStorage.getItem(`${k}_photo`)) || null;
+    } catch {
+      return null;
+    }
+  };
+  const [own, setOwn] = useState(() => ({ key: listKey, lines: listKey ? read(listKey) : [], photo: listKey ? readPhoto(listKey) : null }));
+  if (own.key !== listKey) setOwn({ key: listKey, lines: listKey ? read(listKey) : [], photo: listKey ? readPhoto(listKey) : null });
+  const lines = own.key === listKey ? own.lines : [];
+  const photoData = own.key === listKey ? own.photo : null; // { dataUrl, service_id, service_name }
+  const photo = useMemo(() => (photoData ? { ...photoData, file: dataUrlToFile(photoData.dataUrl) } : null), [photoData]);
+  useEffect(() => {
+    if (!own.key) return;
+    try {
+      localStorage.setItem(own.key, JSON.stringify(own.lines));
+      if (own.photo) localStorage.setItem(`${own.key}_photo`, JSON.stringify(own.photo));
+      else localStorage.removeItem(`${own.key}_photo`);
+    } catch {
+      /* storage full or unavailable: the photo just won't survive a reload */
+    }
+  }, [own]);
+
   const value = useMemo(() => {
     const setQty = (productId, qty) =>
       setItems((list) =>
@@ -39,13 +66,28 @@ export function CartProvider({ children }) {
       );
     const update = (productId, change) => setItems((list) => list.map((i) => (i.product_id === productId ? { ...i, ...change } : i)));
     const find = (productId) => items.find((i) => i.product_id === productId);
+    const setLines = (update) => setOwn((o) => ({ ...o, lines: update(o.lines) }));
     return {
       items,
-      // 1.5 kg of tomatoes is one item on the badge; 3 milk packets are three
-      count: items.reduce((n, i) => n + countOf(i.qty, i.sell_by), 0),
+      // own list: [{ key, service_id, service_name, name, qty_text }] · photo: { file, service_id, service_name } | null
+      lines,
+      photo,
+      addLine: (service) => setLines((l) => [...l, { key: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, service_id: service.id, service_name: service.name, name: '', qty_text: '' }].slice(0, 40)),
+      // one empty line to type into (safe to call twice)
+      ensureLine: (service) => setLines((l) => (l.some((x) => x.service_id === service.id) ? l : [...l, { key: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, service_id: service.id, service_name: service.name, name: '', qty_text: '' }])),
+      updateLine: (key, change) => setLines((l) => l.map((x) => (x.key === key ? { ...x, ...change } : x))),
+      removeLine: (key) => setLines((l) => l.filter((x) => x.key !== key)),
+      setPhoto: async (file, service) => {
+        if (!file) return setOwn((o) => ({ ...o, photo: null }));
+        const dataUrl = await shrinkPhoto(file).catch(() => null);
+        if (!dataUrl) throw new Error('This photo could not be read. Please try another one.');
+        setOwn((o) => ({ ...o, photo: { dataUrl, service_id: service.id, service_name: service.name } }));
+      },
+      // 1.5 kg of tomatoes is one item on the badge; 3 milk packets are three; each own-list line is one
+      count: items.reduce((n, i) => n + countOf(i.qty, i.sell_by), 0) + lines.filter((x) => x.name.trim()).length + (photo ? 1 : 0),
       // items priced by the shop bill (vegetables, meat…) are not in the total yet
       subtotal: items.reduce((n, i) => n + (i.on_bill ? 0 : Number(i.price) * i.qty), 0),
-      hasBillItems: items.some((i) => i.on_bill),
+      hasBillItems: items.some((i) => i.on_bill) || lines.some((x) => x.name.trim()) || !!photo,
       qtyOf: (productId) => find(productId)?.qty || 0,
       itemOf: find,
       // first tap: 1 kg / 1 L / 1 pack; then the next step (250 g steps for kg)
@@ -57,7 +99,7 @@ export function CartProvider({ children }) {
                 product_id: product.id, name: product.name, brand: product.brand, unit: product.unit,
                 price: Number(product.price), mrp: product.mrp ? Number(product.mrp) : null,
                 icon: product.icon || service?.category_icon, image_url: product.image_url,
-                service_name: service?.name, qty: 1,
+                service_id: service?.id, service_name: service?.name, qty: 1,
                 sell_by: product.sell_by || 'pack', on_bill: !!service?.price_on_bill,
                 note_options: product.note_options || null, cuts: [], extra: '',
               }]
@@ -78,9 +120,12 @@ export function CartProvider({ children }) {
       setExtra: (productId, extra) => update(productId, { extra: extra.slice(0, 120) }),
       setQty,
       remove: (productId) => setQty(productId, 0),
-      clear: () => setItems(() => []),
+      clear: () => {
+        setItems(() => []);
+        setOwn((o) => ({ ...o, lines: [], photo: null }));
+      },
     };
-  }, [items]);
+  }, [items, lines, photo]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

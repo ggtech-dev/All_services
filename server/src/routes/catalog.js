@@ -67,6 +67,17 @@ router.get('/categories/:slug', async (req, res, next) => {
   }
 });
 
+// Shops the customer may choose at checkout: ?services=19,2936 (the cart's services).
+router.get('/shops', async (req, res, next) => {
+  try {
+    const ids = String(req.query.services || '').split(',').filter((x) => /^\d{1,9}$/.test(x)).slice(0, 40).map(Number);
+    const { rows } = await query('SELECT fn_shops_for($1) AS list', [ids]);
+    res.json(rows[0].list);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Services highlighted on the home page (e.g. fresh vegetables 6–10 AM).
 router.get('/featured-services', async (req, res, next) => {
   try {
@@ -96,7 +107,7 @@ router.get('/services/:slug', async (req, res, next) => {
     if (!svc.rows[0]) return res.status(404).json({ error: 'Service not found' });
 
     const products = await query(
-      `SELECT id, slug, name, brand, description, icon, image_url, image_credit, unit, price, mrp, in_stock, sell_by, note_options
+      `SELECT id, slug, name, brand, description, icon, image_url, image_credit, unit, price, mrp, in_stock, sell_by, note_options, section
          FROM products WHERE service_id = $1 AND is_active ORDER BY in_stock DESC, sort_order, id`,
       [svc.rows[0].id]
     );

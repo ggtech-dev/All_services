@@ -143,10 +143,11 @@ const saveService = (id) => h(async (req, res) => {
       b.skill_code || null,
     ])).rows[0];
     // daily-service options (only when the form sends them)
-    if ('price_on_bill' in b || 'window_from' in b || 'is_featured' in b) {
-      await db.query('CALL sp_set_service_options($1,$2,$3,$4,$5)', [
+    if ('price_on_bill' in b || 'window_from' in b || 'is_featured' in b || 'allows_list' in b) {
+      await db.query('CALL sp_set_service_options($1,$2,$3,$4,$5,$6)', [
         saved.id, typeof b.price_on_bill === 'boolean' ? b.price_on_bill : null,
         num(b.window_from), num(b.window_to), typeof b.is_featured === 'boolean' ? b.is_featured : null,
+        typeof b.allows_list === 'boolean' ? b.allows_list : null,
       ]);
     }
     return (await db.query('SELECT * FROM services WHERE id = $1', [saved.id])).rows[0];

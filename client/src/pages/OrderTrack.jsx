@@ -4,6 +4,7 @@ import { api } from '../api.js';
 import { ACTIVE, STEPS, VEHICLES, rupees, secondsAgo, stepLabels, statusLabel, time, usePoll, when } from '../orderStatus.jsx';
 import MapView from '../components/LazyMap.jsx';
 import { CustomerShopBill } from '../components/ShopBill.jsx';
+import OrderExtras from '../components/OrderExtras.jsx';
 import { CustomerDoorPayment, doorPayment, feeLabel } from '../components/DeliveryCharge.jsx';
 import { cityOf, useSettings } from '../settings.js';
 import { qtyLabel } from '../qty.js';
@@ -117,6 +118,7 @@ export default function OrderTrack() {
         </ol>
       )}
 
+      <OrderExtras order={order} filesBase={`/orders/${order.id}/files`} />
       <CustomerShopBill order={order} onChanged={load} />
       <CustomerDoorPayment order={order} />
 
@@ -146,7 +148,7 @@ export default function OrderTrack() {
                 <div className="summary-name">
                   <b>{i.name}</b>
                   <small className="muted">
-                    {i.sell_by === 'pack' ? <>{i.unit}{Number(i.qty) > 1 && ` · ${Number(i.qty)} × ${rupees(i.price)}`}</> : qtyLabel(i.qty, i.sell_by)}
+                    {i.sell_by === 'pack' ? <>{i.unit}{Number(i.qty) > 1 && ` · ${Number(i.qty)} × ${rupees(i.price)}`}</> : (i.sell_by === 'custom' ? i.unit : qtyLabel(i.qty, i.sell_by))}
                   </small>
                   {i.note && <small className="item-note">✂️ {i.note}</small>}
                 </div>

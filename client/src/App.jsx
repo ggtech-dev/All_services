@@ -36,6 +36,7 @@ const AgentProfile = lazy(() => import('./agent/AgentPages.jsx').then((m) => ({ 
 const AgentPayQr = lazy(() => import('./agent/AgentPages.jsx').then((m) => ({ default: m.AgentPayQr })));
 const DeliveryCharges = lazy(() => import('./admin/DeliveryCharges.jsx'));
 const Areas = lazy(() => import('./admin/Areas.jsx'));
+const Shops = lazy(() => import('./admin/Shops.jsx'));
 
 const Loading = () => <div className="center-screen"><div className="spinner" /></div>;
 const HOME = { admin: '/admin', agent: '/agent' };
@@ -98,6 +99,7 @@ export default function App() {
         <Route path="service-types" element={<ServiceTypes />} />
         <Route path="delivery-charges" element={<DeliveryCharges />} />
         <Route path="areas" element={<Areas />} />
+        <Route path="shops" element={<Shops />} />
         <Route path="services" element={<Services />} />
         <Route path="products" element={<Products />} />
         <Route path="categories" element={<Categories />} />

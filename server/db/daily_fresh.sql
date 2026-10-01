@@ -58,10 +58,14 @@ LANGUAGE sql IMMUTABLE SET search_path FROM CURRENT AS $$
   END
 $$;
 
--- One item in a list: "Tomato 1.5 kg", "Vijaya Milk x2", "Sona Masoori Rice" (one pack).
-CREATE OR REPLACE FUNCTION fn_item_label(p_name TEXT, p_qty NUMERIC, p_sell_by TEXT) RETURNS TEXT
+-- One item in a list: "Tomato 1.5 kg", "Vijaya Milk x2", "Sona Masoori Rice" (one pack),
+-- "Sugar — 2 kg" (a line of the customer's own list: p_unit holds what they wrote).
+DROP FUNCTION IF EXISTS fn_item_label(TEXT, NUMERIC, TEXT);
+CREATE OR REPLACE FUNCTION fn_item_label(p_name TEXT, p_qty NUMERIC, p_sell_by TEXT, p_unit TEXT DEFAULT NULL) RETURNS TEXT
 LANGUAGE sql IMMUTABLE SET search_path FROM CURRENT AS $$
-  SELECT p_name || CASE WHEN coalesce(p_sell_by, 'pack') = 'pack' AND p_qty = 1 THEN '' ELSE ' ' || fn_qty_label(p_qty, p_sell_by) END
+  SELECT p_name || CASE WHEN p_sell_by = 'custom' THEN coalesce(' — ' || p_unit, '')
+                        WHEN coalesce(p_sell_by, 'pack') = 'pack' AND p_qty = 1 THEN ''
+                        ELSE ' ' || fn_qty_label(p_qty, p_sell_by) END
 $$;
 
 -- ============ delivery time windows ============
@@ -84,22 +88,30 @@ LANGUAGE sql STABLE SET search_path FROM CURRENT AS $$
    WHERE d + make_interval(hours => h + 1) - interval '45 minutes' > now() AT TIME ZONE 'Asia/Kolkata'
 $$;
 
--- Delivery window for a cart (or a booking): the overlap of its services' windows, since it is one trip.
+-- Delivery window for a set of services in one trip: the overlap of their windows.
 -- conflict = the windows don't overlap (e.g. 6–9 AM milk with 5–8 PM items): order them separately.
-CREATE OR REPLACE FUNCTION fn_cart_window(p_product_ids INT[], p_service_id INT,
-                                          OUT win_from INT, OUT win_to INT, OUT conflict BOOLEAN)
+CREATE OR REPLACE FUNCTION fn_window_of(p_service_ids INT[], OUT win_from INT, OUT win_to INT, OUT conflict BOOLEAN)
 LANGUAGE sql STABLE SET search_path FROM CURRENT AS $$
   SELECT max(s.window_from)::int, min(s.window_to)::int, coalesce(max(s.window_from) >= min(s.window_to), false)
     FROM services s
-   WHERE s.window_from IS NOT NULL
-     AND (s.id = p_service_id
-          OR s.id IN (SELECT service_id FROM products WHERE id = ANY(coalesce(p_product_ids, ARRAY[]::INT[]))))
+   WHERE s.window_from IS NOT NULL AND s.id = ANY(coalesce(p_service_ids, ARRAY[]::INT[]))
+$$;
+
+-- Delivery window for a cart (its products' services) or a booking.
+CREATE OR REPLACE FUNCTION fn_cart_window(p_product_ids INT[], p_service_id INT,
+                                          OUT win_from INT, OUT win_to INT, OUT conflict BOOLEAN)
+LANGUAGE sql STABLE SET search_path FROM CURRENT AS $$
+  SELECT * FROM fn_window_of(ARRAY(SELECT service_id FROM products WHERE id = ANY(coalesce(p_product_ids, ARRAY[]::INT[])))
+                             || coalesce(p_service_id, 0))
 $$;
 
 -- ============ admin: service & product options ============
 
+-- p_allows_list: customers may also write their own list / send a photo (kirana…); NULL = leave as it is.
+DROP PROCEDURE IF EXISTS sp_set_service_options(INT, BOOLEAN, INT, INT, BOOLEAN);
 CREATE OR REPLACE PROCEDURE sp_set_service_options(p_service_id INT, p_price_on_bill BOOLEAN,
-                                                   p_window_from INT, p_window_to INT, p_is_featured BOOLEAN)
+                                                   p_window_from INT, p_window_to INT, p_is_featured BOOLEAN,
+                                                   p_allows_list BOOLEAN DEFAULT NULL)
 LANGUAGE plpgsql SET search_path FROM CURRENT AS $$
 BEGIN
   IF (p_window_from IS NULL) <> (p_window_to IS NULL) THEN
@@ -112,7 +124,8 @@ BEGIN
      SET price_on_bill = coalesce(p_price_on_bill, price_on_bill),
          window_from   = p_window_from,
          window_to     = p_window_to,
-         is_featured   = coalesce(p_is_featured, is_featured)
+         is_featured   = coalesce(p_is_featured, is_featured),
+         allows_list   = coalesce(p_allows_list, allows_list)
    WHERE id = p_service_id;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Service not found' USING ERRCODE = 'P0002';

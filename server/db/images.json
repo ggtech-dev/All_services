@@ -773,5 +773,391 @@
     "source": "https://commons.wikimedia.org/wiki/File:Fresh_Raw_Chicken_Parts_on_Display.jpg",
     "india": false,
     "picked": true
+  },
+  "veg:methi": {
+    "none": true,
+    "note": "checked by hand: no good free photo — shows the emoji tile"
+  },
+  "milk:cow": {
+    "none": true,
+    "note": "checked by hand: no good free photo — shows the emoji tile"
+  },
+  "milk:buffalo": {
+    "none": true,
+    "note": "checked by hand: no good free photo — shows the emoji tile"
+  },
+  "kir:sona-masoori-rice": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/Masoori_Rice_%285193854729%29.jpg/960px-Masoori_Rice_%285193854729%29.jpg",
+    "credit": "\"Masoori Rice (5193854729)\" by Leslie Seaton from Seattle, WA, USA, CC BY 2.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Masoori_Rice_(5193854729).jpg",
+    "india": false
+  },
+  "kir:basmati-rice": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f8/Basmati_Rice_India%2C_raw.jpg/960px-Basmati_Rice_India%2C_raw.jpg",
+    "credit": "\"Basmati Rice India, raw\" by cookbookman17, CC BY 2.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Basmati_Rice_India,_raw.jpg",
+    "india": true
+  },
+  "kir:jowar-jonnalu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cb/Sorghum_on_sale_at_the_Monday_Market_in_Kakuri%2C_Kaduna%2C_Nigeria.jpg/960px-Sorghum_on_sale_at_the_Monday_Market_in_Kakuri%2C_Kaduna%2C_Nigeria.jpg",
+    "credit": "\"Sorghum on sale at the Monday Market in Kakuri, Kaduna, Nigeria\" by Kambai Akau, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Sorghum_on_sale_at_the_Monday_Market_in_Kakuri,_Kaduna,_Nigeria.jpg",
+    "india": false
+  },
+  "kir:ragi-finger-millet": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/31/Food_grain_finger_millet.jpg/960px-Food_grain_finger_millet.jpg",
+    "credit": "\"Food grain finger millet\" by Sengai Podhuvan, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Food_grain_finger_millet.jpg",
+    "india": false
+  },
+  "kir:rice-flour-biyyam-pindi": {
+    "url": "https://upload.wikimedia.org/wikipedia/commons/1/19/Two_kinds_of_rice_flour.jpg",
+    "credit": "\"Two kinds of rice flour\" by FotoosVanRobin, CC BY-SA 2.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Two_kinds_of_rice_flour.jpg",
+    "india": false
+  },
+  "kir:bombay-rava-upma-rava": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c6/Sa_semolina_far.jpg/960px-Sa_semolina_far.jpg",
+    "credit": "\"Sa semolina far\" by Sanjay ach, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Sa_semolina_far.jpg",
+    "india": false
+  },
+  "kir:ragi-flour": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ac/Ragi_millet_flour.jpg/960px-Ragi_millet_flour.jpg",
+    "credit": "\"Ragi millet flour\" by Medhi jyoti, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Ragi_millet_flour.jpg",
+    "india": false
+  },
+  "kir:urad-dal-minapa-pappu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6f/Black_gram.jpg/960px-Black_gram.jpg",
+    "credit": "\"Black gram\" by Sanjay Acharya, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Black_gram.jpg",
+    "india": false
+  },
+  "kir:masoor-dal": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e2/A_mix_of_split_lentils%2C_masoor_dal_India.jpg/960px-A_mix_of_split_lentils%2C_masoor_dal_India.jpg",
+    "credit": "\"A mix of split lentils, masoor dal India\" by jasleen_kaur from USA, CC BY-SA 2.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:A_mix_of_split_lentils,_masoor_dal_India.jpg",
+    "india": true
+  },
+  "kir:kabuli-chana": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ea/Sa-whitegreen-chickpea.jpg/960px-Sa-whitegreen-chickpea.jpg",
+    "credit": "\"Sa-whitegreen-chickpea\" by Sanjay Acharya, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Sa-whitegreen-chickpea.jpg",
+    "india": false
+  },
+  "kir:rajma": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c6/Red_Speckled_Kidney_Beans.jpg/960px-Red_Speckled_Kidney_Beans.jpg",
+    "credit": "\"Red Speckled Kidney Beans\" by Sanjay Acharya, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Red_Speckled_Kidney_Beans.jpg",
+    "india": false
+  },
+  "kir:groundnuts-palli": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/53/Raw_peanuts.JPG/960px-Raw_peanuts.JPG",
+    "credit": "\"Raw peanuts\" by Sakurai Midori, CC BY 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Raw_peanuts.JPG",
+    "india": false
+  },
+  "kir:gingelly-sesame-oil": {
+    "url": "https://upload.wikimedia.org/wikipedia/commons/0/0a/Sesame_oil.jpg",
+    "credit": "\"Sesame oil\" by Mariko GODA, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Sesame_oil.jpg",
+    "india": false
+  },
+  "kir:mustard-oil": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e3/Mustard_Oil_%26_Seeds_-_Kolkata_2003-10-31_00537.JPG/960px-Mustard_Oil_%26_Seeds_-_Kolkata_2003-10-31_00537.JPG",
+    "credit": "\"Mustard Oil & Seeds - Kolkata 2003-10-31 00537\" by Biswarup Ganguly, CC BY 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Mustard_Oil_%26_Seeds_-_Kolkata_2003-10-31_00537.JPG",
+    "india": true
+  },
+  "kir:cow-ghee": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/65/Pure_Ghee-Homemade-Maharashtra.jpg/960px-Pure_Ghee-Homemade-Maharashtra.jpg",
+    "credit": "\"Pure Ghee-Homemade-Maharashtra\" by Phadke09, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Pure_Ghee-Homemade-Maharashtra.jpg",
+    "india": false
+  },
+  "kir:guntur-red-chilli-powder": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d4/Red_Chili_Powder_%28Lall_Mirch%29_%2849695826571%29.jpg/960px-Red_Chili_Powder_%28Lall_Mirch%29_%2849695826571%29.jpg",
+    "credit": "\"Red Chili Powder (Lall Mirch) (49695826571)\" by Ajay Suresh from New York, NY, USA, CC BY 2.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Red_Chili_Powder_(Lall_Mirch)_(49695826571).jpg",
+    "india": false
+  },
+  "kir:turmeric-powder-pasupu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/88/Turmeric_powder_in_stall.JPG/960px-Turmeric_powder_in_stall.JPG",
+    "credit": "\"Turmeric powder in stall\" by Surya Prakash.S.A., CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Turmeric_powder_in_stall.JPG",
+    "india": false
+  },
+  "kir:mustard-seeds-avalu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fe/Mustard_Seeds_%288630655446%29.jpg/960px-Mustard_Seeds_%288630655446%29.jpg",
+    "credit": "\"Mustard Seeds (8630655446)\" by Veganbaking.net from USA, CC BY-SA 2.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Mustard_Seeds_(8630655446).jpg",
+    "india": false
+  },
+  "kir:dry-red-chillies-endu-mirapakayalu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cb/Pulses_Red_Chillies_Ooty_Market_Nilgiris_Aug25_A7CR_07122.jpg/960px-Pulses_Red_Chillies_Ooty_Market_Nilgiris_Aug25_A7CR_07122.jpg",
+    "credit": "\"Pulses Red Chillies Ooty Market Nilgiris Aug25 A7CR 07122\" by Timothy A. Gonsalves, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Pulses_Red_Chillies_Ooty_Market_Nilgiris_Aug25_A7CR_07122.jpg",
+    "india": false
+  },
+  "kir:tamarind-chintapandu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cd/Tamarind_fruits_%28Tamarindus_indica_%27Si_Thong%27%29.jpg/960px-Tamarind_fruits_%28Tamarindus_indica_%27Si_Thong%27%29.jpg",
+    "credit": "\"Tamarind fruits (Tamarindus indica 'Si Thong')\" by Ivar Leidus, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Tamarind_fruits_(Tamarindus_indica_%27Si_Thong%27).jpg",
+    "india": false
+  },
+  "kir:cloves-lavangalu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ed/Clove_close_up.jpg/960px-Clove_close_up.jpg",
+    "credit": "\"Clove close up\" by Sanjay Acharya, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Clove_close_up.jpg",
+    "india": false
+  },
+  "kir:cardamom-yalakulu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2c/Elettaria_cardamomum_Capsules_and_seeds.jpg/960px-Elettaria_cardamomum_Capsules_and_seeds.jpg",
+    "credit": "\"Elettaria cardamomum Capsules and seeds\" by Didier Descouens, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Elettaria_cardamomum_Capsules_and_seeds.jpg",
+    "india": false
+  },
+  "kir:cinnamon-dalchina-chekka": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/Pile_of_cinnamon_sticks.jpg/960px-Pile_of_cinnamon_sticks.jpg",
+    "credit": "\"Pile of cinnamon sticks\" by Gnu-Bricoleur, CC BY 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Pile_of_cinnamon_sticks.jpg",
+    "india": false
+  },
+  "kir:sugar": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/56/Sugar_2xmacro.jpg/960px-Sugar_2xmacro.jpg",
+    "credit": "\"Sugar 2xmacro\" by Lauri Andler (Phantom), CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Sugar_2xmacro.jpg",
+    "india": false
+  },
+  "kir:jaggery-bellam": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/35/Organic_palm_jaggery.jpg/960px-Organic_palm_jaggery.jpg",
+    "credit": "\"Organic palm jaggery\" by Rohini, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Organic_palm_jaggery.jpg",
+    "india": false
+  },
+  "kir:poha-atukulu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/80/Poha.jpg/960px-Poha.jpg",
+    "credit": "\"Poha\" by Sanjay Acharya, aka Sanjay ach at en.wikipedia, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Poha.jpg",
+    "india": false
+  },
+  "kir:cashews": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/df/Cashew_nuts_with_skin.jpg/960px-Cashew_nuts_with_skin.jpg",
+    "credit": "\"Cashew nuts with skin\" by Fumikas Sagisavas, CC0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Cashew_nuts_with_skin.jpg",
+    "india": false
+  },
+  "kir:almonds": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/37/Almonds_-_in_shell%2C_shell_cracked_open%2C_shelled%2C_blanched.jpg/960px-Almonds_-_in_shell%2C_shell_cracked_open%2C_shelled%2C_blanched.jpg",
+    "credit": "\"Almonds - in shell, shell cracked open, shelled, blanched\" by Ivar Leidus, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Almonds_-_in_shell,_shell_cracked_open,_shelled,_blanched.jpg",
+    "india": false
+  },
+  "kir:raisins-kismis": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5d/Sunmaid-Raisin-Pile.jpg/960px-Sunmaid-Raisin-Pile.jpg",
+    "credit": "\"Sunmaid-Raisin-Pile\" by Evan-Amos, CC0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Sunmaid-Raisin-Pile.jpg",
+    "india": false
+  },
+  "kir:dates": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6e/Pile_of_Wet_Dates_at_Barkin_Dogo_Market%2C_Kaduna_North.jpg/960px-Pile_of_Wet_Dates_at_Barkin_Dogo_Market%2C_Kaduna_North.jpg",
+    "credit": "\"Pile of Wet Dates at Barkin Dogo Market, Kaduna North\" by Samsule2, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Pile_of_Wet_Dates_at_Barkin_Dogo_Market,_Kaduna_North.jpg",
+    "india": false
+  },
+  "kir:kumkum": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/Kumkum.jpg/960px-Kumkum.jpg",
+    "credit": "\"Kumkum\" by Vis M, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Kumkum.jpg",
+    "india": false
+  },
+  "kir:wheat-godhumalu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/84/Wheat_grains_kept_for_drying_at_Madhurawada.JPG/960px-Wheat_grains_kept_for_drying_at_Madhurawada.JPG",
+    "credit": "\"Wheat grains kept for drying at Madhurawada\" by Adityamadhav83, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Wheat_grains_kept_for_drying_at_Madhurawada.JPG",
+    "india": false,
+    "picked": true
+  },
+  "kir:besan-senaga-pindi": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5e/Gram_flour_AvL.jpg/960px-Gram_flour_AvL.jpg",
+    "credit": "\"Gram flour AvL\" by AlexanderVanLoon, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Gram_flour_AvL.jpg",
+    "india": false,
+    "picked": true
+  },
+  "kir:toor-dal-kandi-pappu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a2/Tur_Dal.JPG/960px-Tur_Dal.JPG",
+    "credit": "\"Tur Dal\" by Miansari66, Public domain (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Tur_Dal.JPG",
+    "india": false,
+    "picked": true
+  },
+  "kir:green-moong-whole-pesalu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/61/Green_Mung_Beans.jpg/960px-Green_Mung_Beans.jpg",
+    "credit": "\"Green Mung Beans\" by Sanjay Acharya, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Green_Mung_Beans.jpg",
+    "india": false,
+    "picked": true
+  },
+  "kir:cumin-seeds-jeelakarra": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/39/Seeds_of_Cumin.jpg/960px-Seeds_of_Cumin.jpg",
+    "credit": "\"Seeds of Cumin\" by Sanjay Acharya, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Seeds_of_Cumin.jpg",
+    "india": false,
+    "picked": true
+  },
+  "kir:fenugreek-seeds-menthulu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e6/Fenugreek_seeds.jpg/960px-Fenugreek_seeds.jpg",
+    "credit": "\"Fenugreek seeds\" by Sanjay Acharya, CC BY-SA 3.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Fenugreek_seeds.jpg",
+    "india": false,
+    "picked": true
+  },
+  "kir:black-pepper-miriyalu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/ca/Black_Peppercorns_%284422070187%29.jpg/960px-Black_Peppercorns_%284422070187%29.jpg",
+    "credit": "\"Black Peppercorns (4422070187)\" by Ryan Snyder, CC BY 2.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Black_Peppercorns_(4422070187).jpg",
+    "india": false,
+    "picked": true
+  },
+  "kir:honey": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/Honey_comb_with_capped_honey.jpg/960px-Honey_comb_with_capped_honey.jpg",
+    "credit": "\"Honey comb with capped honey\" by Einebillion, CC BY 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Honey_comb_with_capped_honey.jpg",
+    "india": false,
+    "picked": true
+  },
+  "kir:roasted-chana-putnalu": {
+    "url": "https://upload.wikimedia.org/wikipedia/commons/4/40/Leblebi.jpg",
+    "credit": "\"Leblebi\" by Physicistjedi, Public domain (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Leblebi.jpg",
+    "india": false,
+    "picked": true
+  },
+  "pooja,store": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/Decorated_Thali_in_Our_Pooja_Place.jpg/960px-Decorated_Thali_in_Our_Pooja_Place.jpg",
+    "credit": "\"Decorated Thali in Our Pooja Place\" by Swaminathan, CC BY 2.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Decorated_Thali_in_Our_Pooja_Place.jpg",
+    "india": false,
+    "picked": true
+  },
+  "kir:chana-dal-senaga-pappu": {
+    "none": true,
+    "note": "checked by hand: no good free photo — shows the emoji tile"
+  },
+  "kir:moong-dal-pesara-pappu": {
+    "none": true,
+    "note": "checked by hand: no good free photo — shows the emoji tile"
+  },
+  "kir:groundnut-oil": {
+    "none": true,
+    "note": "checked by hand: no good free photo — shows the emoji tile"
+  },
+  "kir:coriander-powder-dhaniyalu": {
+    "none": true,
+    "note": "checked by hand: no good free photo — shows the emoji tile"
+  },
+  "kir:ginger-garlic-paste": {
+    "none": true,
+    "note": "checked by hand: no good free photo — shows the emoji tile"
+  },
+  "kir:rock-salt": {
+    "none": true,
+    "note": "checked by hand: no good free photo — shows the emoji tile"
+  },
+  "kir:pasta-penne": {
+    "none": true,
+    "note": "checked by hand: no good free photo — shows the emoji tile"
+  },
+  "pj:clay-diyas-pramidalu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a9/Diya_Lamp.jpg/960px-Diya_Lamp.jpg",
+    "credit": "\"Diya Lamp\" by Ara Basu, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Diya_Lamp.jpg",
+    "india": false
+  },
+  "pj:cotton-wicks-vattulu": {
+    "none": true,
+    "note": "checked by hand: rejected"
+  },
+  "pj:agarbatti-incense-sticks": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Incense_retailed_in_Macau.jpg/960px-Incense_retailed_in_Macau.jpg",
+    "credit": "\"Incense retailed in Macau\" by Pauloleong2002, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Incense_retailed_in_Macau.jpg",
+    "india": false,
+    "picked": true
+  },
+  "pj:kumkum": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/Kumkum.jpg/960px-Kumkum.jpg",
+    "credit": "\"Kumkum\" by Vis M, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Kumkum.jpg",
+    "india": false
+  },
+  "pj:vibhuti-holy-ash": {
+    "none": true,
+    "note": "checked by hand: rejected"
+  },
+  "pj:marigold-garland-banti-dandalu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Marigold_garlands.jpg/960px-Marigold_garlands.jpg",
+    "credit": "\"Marigold garlands\" by পাপৰি বৰা, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Marigold_garlands.jpg",
+    "india": false,
+    "picked": true
+  },
+  "pj:betel-leaves-tamalapakulu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/78/Betel_leaves_for_selling_in_the_market_01.jpg/960px-Betel_leaves_for_selling_in_the_market_01.jpg",
+    "credit": "\"Betel leaves for selling in the market 01\" by Suyash Dwivedi, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Betel_leaves_for_selling_in_the_market_01.jpg",
+    "india": false
+  },
+  "pj:betel-nuts-vakkalu": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9d/Areca_nuts_drying.jpg/960px-Areca_nuts_drying.jpg",
+    "credit": "\"Areca nuts drying\" by Slashme, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Areca_nuts_drying.jpg",
+    "india": false,
+    "picked": true
+  },
+  "pj:pooja-coconut": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8f/Coconut_husk.jpg/960px-Coconut_husk.jpg",
+    "credit": "\"Coconut husk\" by Vis M, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Coconut_husk.jpg",
+    "india": false
+  },
+  "pj:bananas-for-pooja": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a9/Bunch_of_bananas_on_sale.jpg/960px-Bunch_of_bananas_on_sale.jpg",
+    "credit": "\"Bunch of bananas on sale\" by Wilfredor, CC0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Bunch_of_bananas_on_sale.jpg",
+    "india": false
+  },
+  "veg:cauliflower": {
+    "none": true,
+    "note": "checked by hand: no good free photo — shows the emoji tile"
+  },
+  "kir:maida": {
+    "none": true,
+    "note": "checked by hand: no good free photo — shows the emoji tile"
+  },
+  "kir:black-chana-nalla-senagalu": {
+    "none": true,
+    "note": "checked by hand: no good free photo — shows the emoji tile"
+  },
+  "kir:asafoetida-inguva": {
+    "none": true,
+    "note": "checked by hand: no good free photo — shows the emoji tile"
+  },
+  "kir:filter-coffee-powder": {
+    "none": true,
+    "note": "checked by hand: no good free photo — shows the emoji tile"
+  },
+  "pj:camphor-karpooram": {
+    "url": "https://upload.wikimedia.org/wikipedia/commons/f/fe/Camphor_Cubes.jpg",
+    "credit": "\"Camphor Cubes\" by Salil Kumar Mukherjee, CC BY-SA 4.0 (Wikimedia Commons)",
+    "source": "https://commons.wikimedia.org/wiki/File:Camphor_Cubes.jpg",
+    "india": false,
+    "picked": true
+  },
+  "pj:sambrani-cups": {
+    "none": true,
+    "note": "checked by hand: no good free photo"
   }
 }

@@ -191,7 +191,7 @@ input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 2
 .add-btn:hover:not(:disabled) { background: var(--accent); color: #fff; }
 @media (max-width: 560px) {
   .product-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .shop-header-img { width: 100%; }
+  .shop-header-img { width: 100%; aspect-ratio: 16 / 7; } /* shorter on phones: the items come into view sooner */
 }
 /* Products without a photo: soft tinted tile so the emoji carries the card. */
 .product-img .img-fallback { background: color-mix(in srgb, var(--accent) 9%, white) !important; }
@@ -519,3 +519,68 @@ input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 2
 .cut-chips button { border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
 .cut-chips button.active { background: var(--accent, var(--primary)); border-color: var(--accent, var(--primary)); color: #fff; }
 .cut-chooser input { font-size: 13px; padding: 6px 10px; }
+
+/* ---------- installable app (PWA) ---------- */
+.install-banner { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid #c7d2fe; border-radius: 16px; padding: 12px 14px; box-shadow: var(--shadow); margin-bottom: 18px; }
+.install-banner img { border-radius: 10px; flex-shrink: 0; }
+.install-text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.install-text small { color: var(--muted); }
+.install-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+@media (max-width: 480px) {
+  .install-banner { flex-wrap: wrap; }
+  .install-actions { width: 100%; justify-content: flex-end; }
+}
+.ios-steps { text-align: left; margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+.offline-bar { position: sticky; top: 0; z-index: 90; background: #7f1d1d; color: #fff; text-align: center; font-size: 13px; font-weight: 600; padding: 7px 12px; }
+/* installed app on phones with a notch: keep content clear of the status bar */
+@media (display-mode: standalone) {
+  body { padding-top: env(safe-area-inset-top); }
+}
+.install-nav { border-color: #c7d2fe; color: var(--primary); }
+.install-login { margin-top: 10px; }
+
+/* ---------- kirana: own list, shop choice ---------- */
+.shop-tabs { display: flex; gap: 6px; background: #eef2f7; padding: 5px; border-radius: 14px; margin: 0 0 16px; }
+.shop-tabs button { flex: 1; border: 0; background: transparent; padding: 10px 12px; border-radius: 10px; font: inherit; font-weight: 700; color: var(--muted); cursor: pointer; }
+.shop-tabs button.active { background: var(--surface); color: var(--accent, var(--primary)); box-shadow: var(--shadow); }
+.own-list { display: flex; flex-direction: column; gap: 12px; }
+.own-list > p { margin: 0; }
+.own-lines { display: flex; flex-direction: column; gap: 8px; }
+.own-line { display: grid; grid-template-columns: 22px 1fr 110px 34px; gap: 8px; align-items: center; }
+.own-no { color: var(--muted); font-weight: 600; text-align: right; }
+.own-remove { border: 0; background: #f1f5f9; border-radius: 8px; height: 38px; cursor: pointer; color: var(--muted); }
+.own-remove:hover { background: #fee2e2; color: #b91c1c; }
+.own-add { align-self: flex-start; }
+.own-photo { border-top: 1px dashed var(--border); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+@media (max-width: 480px) { .own-line { grid-template-columns: 18px 1fr 84px 30px; gap: 6px; } }
+
+.order-extras { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
+.shop-pref { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 10px 12px; }
+.shop-pref-strong { background: #fffbeb; border: 2px solid #f59e0b; font-size: 15px; }
+.list-photo { display: flex; align-items: center; gap: 12px; }
+.avail-extras { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; font-size: 13px; font-weight: 600; color: #b45309; }
+
+.cart-bar-space { height: 84px; }
+.pay-option input { width: auto; flex: none; margin: 0; }
+@media (max-width: 480px) { .own-line { grid-template-columns: 18px 1fr 96px 30px; } }
+
+/* sections inside a shop (kirana) */
+.scroll-row.section-chips { position: sticky; top: 64px; z-index: 5; background: var(--bg, #f5f7fb); margin-bottom: 6px; padding-top: 6px; }
+.section-chips button { flex: none; border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.section-chips button.active { background: var(--accent, var(--primary)); border-color: var(--accent, var(--primary)); color: #fff; }
+/* sideways-scrolling row (ScrollRow): swipe on phones, ‹ › buttons + mouse wheel on laptops */
+.scroll-row { position: relative; }
+.scroll-track { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 10px; scrollbar-width: none; scroll-behavior: smooth; }
+.scroll-track::-webkit-scrollbar { display: none; }
+.scroll-row.more-left .scroll-track { mask-image: linear-gradient(to right, transparent 0, #000 56px); }
+.scroll-row.more-right .scroll-track { mask-image: linear-gradient(to left, transparent 0, #000 56px); }
+.scroll-row.more-left.more-right .scroll-track { mask-image: linear-gradient(to right, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%); }
+.scroll-btn { position: absolute; top: 50%; transform: translateY(calc(-50% - 4px)); z-index: 2; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); box-shadow: 0 2px 10px rgba(15, 23, 42, .18); color: var(--text, #0f172a); cursor: pointer; display: grid; place-items: center; padding: 0; }
+.scroll-btn svg { width: 18px; height: 18px; }
+.scroll-btn:hover { border-color: var(--accent, var(--primary)); color: var(--accent, var(--primary)); }
+.scroll-left { left: 0; }
+.scroll-right { right: 0; }
+@media (hover: none) { .scroll-btn { display: none; } } /* phones: just swipe */
+.shop-section { margin-bottom: 18px; }
+.shop-section-title { font-size: 17px; margin: 10px 0 10px; }
+.shop-section-title .muted { font-size: 13px; font-weight: 500; }

@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react
 import { useAuth } from '../auth.jsx';
 import AuthLayout from './AuthLayout.jsx';
 import EmailCode from '../components/EmailCode.jsx';
+import { InstallButton } from '../components/InstallApp.jsx';
 
 const PORTALS = {
   user: { label: 'User', icon: '👤', title: 'Welcome back 👋', subtitle: 'Log in to book your next service', button: 'Login' },
@@ -117,6 +118,7 @@ export default function Login() {
       {portal === 'user' && <p className="switch">New here? <Link to="/register">Create an account</Link></p>}
       {portal === 'agent' && <p className="switch">Want to work with us? <Link to="/agent/apply">Apply as an agent</Link></p>}
       {portal === 'admin' && <p className="switch">Admin accounts are created by the system owner.</p>}
+      {portal !== 'admin' && <InstallButton className="btn btn-ghost btn-block install-login" />}
     </AuthLayout>
   );
 }

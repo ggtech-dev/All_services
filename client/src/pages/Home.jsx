@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import SmartImage from '../components/SmartImage.jsx';
 import Promotions from '../components/Promotions.jsx';
+import { InstallBanner } from '../components/InstallApp.jsx';
 import { windowLabel } from '../qty.js';
 
 export default function Home() {
@@ -37,6 +38,7 @@ export default function Home() {
         </div>
       </section>
 
+      <InstallBanner />
       <Promotions />
 
       {featured.length > 0 && <DailyFresh services={featured} />}

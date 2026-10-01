@@ -13,10 +13,18 @@ const nearestLocality = (list, lat, lng) =>
     return !best || d < best.d ? { ...l, d } : best;
   }, null);
 
-const SLOTS = {
-  products: ['As soon as possible', 'Today 7–9 AM', 'Today 12–2 PM', 'Today 5–7 PM', 'Tomorrow 7–9 AM', 'Tomorrow 5–7 PM'],
-  service: ['As soon as possible', 'Today 10 AM–12 PM', 'Today 2–4 PM', 'Today 4–6 PM', 'Tomorrow 10 AM–12 PM', 'Tomorrow 2–4 PM'],
-};
+// Delivery / visit times: "As soon as possible", today's 2-hour windows that are still ahead (starting at least
+// 30 minutes from now), then tomorrow's. Services with a fixed window (vegetables 6–10 AM) use the server's slots.
+const WINDOWS = { products: [[7, 9], [9, 11], [12, 14], [15, 17], [17, 19], [19, 21]], service: [[9, 11], [11, 13], [14, 16], [16, 18], [18, 20]] };
+const hr = (h) => ({ n: h % 12 || 12, m: h < 12 ? 'AM' : 'PM' });
+const span = ([a, b]) => (hr(a).m === hr(b).m ? `${hr(a).n}–${hr(b).n} ${hr(b).m}` : `${hr(a).n} ${hr(a).m}–${hr(b).n} ${hr(b).m}`);
+function buildSlots(kind, now = new Date()) {
+  const ist = new Date(now.getTime() + (330 + now.getTimezoneOffset()) * 60000); // India time
+  const minutes = ist.getHours() * 60 + ist.getMinutes();
+  const today = WINDOWS[kind].filter(([a]) => a * 60 >= minutes + 30).map((w) => `Today ${span(w)}`);
+  const tomorrow = WINDOWS[kind].slice(0, Math.max(2, 5 - today.length)).map((w) => `Tomorrow ${span(w)}`);
+  return ['As soon as possible', ...today, ...tomorrow];
+}
 
 // Checkout for the cart (products) or for booking one service (?service=<slug>).
 export default function Checkout() {
@@ -30,7 +38,12 @@ export default function Checkout() {
   const [service, setService] = useState(null);
   const [localities, setLocalities] = useState([]);
   const [quote, setQuote] = useState({ delivery_fee: 0, free_left: 0 });
+  const [shops, setShops] = useState([]);
+  const [shopChoice, setShopChoice] = useState(''); // '' = any good shop, a shop id, or 'other'
+  const [shopOther, setShopOther] = useState('');
   const [form, setForm] = useState({ name: user.fullName || '', phone: user.phone || '', address_line: '', landmark: '', locality_id: '', pincode: '' });
+  const [slotOptions] = useState(() => ({ products: buildSlots('products'), service: buildSlots('service') }));
+  const SLOTS = slotOptions;
   const [slot, setSlot] = useState(SLOTS[kind][0]);
   const [notes, setNotes] = useState('');
   const [pin, setPin] = useState(null); // { lat, lng, accuracy } from the phone's GPS
@@ -66,12 +79,24 @@ export default function Checkout() {
     if (serviceSlug) api(`/services/${serviceSlug}`).then((d) => setService(d.service)).catch((e) => setError(e.message));
   }, [serviceSlug]);
 
+  // The customer's own list (kirana…): typed lines with a name, and/or a photo of a handwritten list.
+  const ownLines = cart.lines.filter((l) => l.name.trim());
+  const listServiceIds = [...new Set([...ownLines.map((l) => l.service_id), ...(cart.photo ? [cart.photo.service_id] : [])])].join(',');
+
   // Delivery/visit charge for exactly this cart (highest charge among its shops) or this booking.
   const productIds = cart.items.map((i) => i.product_id).join(',');
   useEffect(() => {
-    const q = kind === 'service' ? (service ? `service=${service.id}` : null) : productIds ? `products=${productIds}` : null;
+    const parts = [productIds && `products=${productIds}`, listServiceIds && `lists=${listServiceIds}`].filter(Boolean).join('&');
+    const q = kind === 'service' ? (service ? `service=${service.id}` : null) : parts || null;
     if (q) api(`/orders/quote?${q}`).then(setQuote).catch(() => {});
-  }, [kind, service, productIds]);
+  }, [kind, service, productIds, listServiceIds]);
+
+  // Shops the customer may choose (for items bought at a shop: vegetables, meat, kirana…)
+  const shopServiceIds = [...new Set([...cart.items.filter((i) => i.on_bill && i.service_id).map((i) => i.service_id), ...(listServiceIds ? listServiceIds.split(',').map(Number) : [])])].join(',');
+  useEffect(() => {
+    if (kind !== 'products' || !shopServiceIds) return setShops([]);
+    api(`/shops?services=${shopServiceIds}`).then(setShops).catch(() => setShops([]));
+  }, [kind, shopServiceIds]);
 
   // Daily services deliver only in their time window: pick one of the slots the server offers.
   const windowSlots = quote.slots || null;
@@ -95,10 +120,14 @@ export default function Checkout() {
 
   const lines = kind === 'service'
     ? service ? [{ key: 's', icon: service.category_icon, name: service.name, unit: service.price_unit, qty: 1, price: Number(service.base_price) }] : []
-    : cart.items.map((i) => ({
-        key: i.product_id, icon: i.icon, name: i.name, unit: i.unit, qty: i.qty, price: i.price, product_id: i.product_id,
-        sell_by: i.sell_by || 'pack', on_bill: !!i.on_bill, note: itemNote(i),
-      }));
+    : [
+        ...cart.items.map((i) => ({
+          key: i.product_id, icon: i.icon, name: i.name, unit: i.unit, qty: i.qty, price: i.price, product_id: i.product_id,
+          sell_by: i.sell_by || 'pack', on_bill: !!i.on_bill, note: itemNote(i),
+        })),
+        ...ownLines.map((l) => ({ key: `own-${l.key}`, own: l, icon: '✍️', name: l.name.trim(), unit: l.qty_text.trim() || 'how much?', qty: 1, price: 0, on_bill: true })),
+        ...(cart.photo ? [{ key: 'photo', photo: true, icon: '📷', name: 'Photo of your list', unit: cart.photo.service_name, qty: 1, price: 0, on_bill: true }] : []),
+      ];
   // items priced by the shop bill (vegetables, meat…) are paid as per the bill, not included here
   const subtotal = lines.reduce((n, l) => n + (l.on_bill ? 0 : l.price * l.qty), 0);
   const hasBill = lines.some((l) => l.on_bill);
@@ -106,7 +135,7 @@ export default function Checkout() {
   const toPay = !hasBill ? rupees(subtotal + fee) : subtotal + fee > 0 ? `${rupees(subtotal + fee)} + shop bill` : 'As per shop bill';
   const feeName = kind === 'service' ? 'Visit charge' : 'Delivery charge';
 
-  if (kind === 'products' && !cart.items.length) {
+  if (kind === 'products' && !cart.items.length && !ownLines.length && !cart.photo) {
     return (
       <div className="empty-state">
         <div className="empty-icon">🛒</div>
@@ -124,8 +153,25 @@ export default function Checkout() {
     try {
       const body = { contact: { ...form, locality_id: Number(form.locality_id), ...(pin && { lat: pin.lat, lng: pin.lng }) }, slot, notes };
       if (kind === 'service') body.service_id = service.id;
-      else body.items = lines.map((l) => ({ product_id: l.product_id, qty: l.qty, ...(l.note && { note: l.note }) }));
-      const order = await api('/orders', { method: 'POST', body });
+      else {
+        body.items = [
+          ...lines.filter((l) => l.product_id).map((l) => ({ product_id: l.product_id, qty: l.qty, ...(l.note && { note: l.note }) })),
+          ...ownLines.map((l) => ({ service_id: l.service_id, name: l.name.trim(), qty_text: l.qty_text.trim() })),
+        ];
+        // only a photo, nothing typed for that shop: one line points to the photo
+        if (cart.photo && !ownLines.some((l) => l.service_id === cart.photo.service_id)) {
+          body.items.push({ service_id: cart.photo.service_id, name: 'Items in the photo', qty_text: 'see photo' });
+        }
+        if (shopChoice === 'other') body.shop_name = shopOther.trim();
+        else if (shopChoice) body.shop_id = Number(shopChoice);
+      }
+      let payload = body;
+      if (kind === 'products' && cart.photo) {
+        payload = new FormData();
+        payload.append('data', JSON.stringify(body));
+        payload.append('list_photo', cart.photo.file);
+      }
+      const order = await api('/orders', { method: 'POST', body: payload });
       if (kind === 'products') cart.clear();
       navigate(`/orders/${order.id}?new=1`, { replace: true });
     } catch (err) {
@@ -179,12 +225,27 @@ export default function Checkout() {
           <label>Instructions (optional)<textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={kind === 'service' ? 'Describe the problem, e.g. kitchen tap leaking' : 'e.g. Ring the bell, leave with security'} /></label>
         </section>
 
+        {kind === 'products' && hasBill && (
+          <section className="panel form">
+            <h3>🏪 Shop <span className="muted small">(optional)</span></h3>
+            <p className="muted small">Want your items from a particular shop? Choose it — your delivery partner will buy only there.</p>
+            <select value={shopChoice} onChange={(e) => setShopChoice(e.target.value)} aria-label="Shop">
+              <option value="">Any good shop — let the delivery partner choose</option>
+              {shops.map((sh) => <option key={sh.id} value={sh.id}>{sh.name}{sh.locality_name ? ` — ${sh.locality_name}` : ''}</option>)}
+              <option value="other">Another shop (type the name)…</option>
+            </select>
+            {shopChoice === 'other' && (
+              <input value={shopOther} onChange={(e) => setShopOther(e.target.value.slice(0, 80))} placeholder="Shop name and area, e.g. Sri Lakshmi Kirana, Bharath Nagar" required />
+            )}
+          </section>
+        )}
+
         <section className="panel">
           <h3>💵 Payment</h3>
           <label className="pay-option">
             <input type="radio" checked readOnly /> <b>Pay on delivery</b> <span className="muted">— pay the {kind === 'service' ? 'expert' : 'agent'} when it arrives</span>
           </label>
-          {hasBill && <p className="muted small">🧾 Vegetables / meat: your delivery partner buys them fresh and shares a photo of the <b>shop bill</b> in your order — you pay exactly that amount.</p>}
+          {hasBill && <p className="muted small">🧾 Market-price items (vegetables, meat, kirana…): your delivery partner buys them and shares a photo of the <b>shop bill</b> in your order — you pay exactly that amount.</p>}
           {fee > 0 && <p className="muted small">The {feeName.toLowerCase()} ({rupees(fee)}) is paid by UPI to All Services — scan the QR on the {kind === 'service' ? "expert's" : "agent's"} phone or tap “Pay with UPI app” in your order.</p>}
         </section>
       </div>
@@ -200,7 +261,9 @@ export default function Checkout() {
                 <small className="muted">{l.unit}</small>
                 {l.note && <small className="item-note">✂️ {l.note}</small>}
               </div>
-              {kind === 'products' ? (
+              {l.own || l.photo ? (
+                <button type="button" className="link-btn danger-text" onClick={() => (l.photo ? cart.setPhoto(null) : cart.removeLine(l.own.key))} aria-label={`Remove ${l.name}`}>Remove</button>
+              ) : kind === 'products' ? (
                 <div className="stepper small-stepper">
                   <button type="button" onClick={() => cart.less(l.product_id)} aria-label={`Less ${l.name}`}>−</button>
                   <span>{l.sell_by === 'pack' ? l.qty : qtyLabel(l.qty, l.sell_by)}</span>
@@ -213,7 +276,7 @@ export default function Checkout() {
         </ul>
         <div className="totals">
           {(subtotal > 0 || !hasBill) && <div><span>{kind === 'service' ? 'Service charge' : 'Items total'}</span><span>{rupees(subtotal)}</span></div>}
-          {hasBill && <div><span>Vegetables / meat</span><span>as per shop bill</span></div>}
+          {hasBill && <div><span>Market-price items</span><span>as per shop bill</span></div>}
           {(kind === 'products' || quote.base_fee > 0) && (
             <div>
               <span>{feeName}</span>
@@ -229,7 +292,7 @@ export default function Checkout() {
         <button className="btn btn-primary btn-block" disabled={busy || !lines.length || quote.window_conflict || (windowSlots && !windowSlots.length)}>
           {busy ? 'Placing…' : kind === 'service' ? `Confirm booking · ${toPay}` : hasBill ? 'Place order' : `Place order · ${toPay}`}
         </button>
-        <p className="muted small center">Prices are confirmed by the store when you place the order.</p>
+        <p className="muted small center">{hasBill ? 'Market-price items are charged exactly as per the shop bill.' : 'Prices are checked again when you place the order.'}</p>
       </aside>
     </form>
   );

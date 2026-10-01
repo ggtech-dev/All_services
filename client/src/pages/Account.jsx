@@ -1,5 +1,6 @@
 import { useAuth } from '../auth.jsx';
 import AccountSecurity from '../components/AccountSecurity.jsx';
+import { InstallButton, ShareApp } from '../components/InstallApp.jsx';
 
 // Customer "My account": profile summary, email and password.
 export default function Account() {
@@ -13,6 +14,8 @@ export default function Account() {
         <p className="muted">@{user.username}{user.phone && ` · ${user.phone}`}</p>
       </section>
       <AccountSecurity />
+      <InstallButton />
+      <ShareApp />
     </div>
   );
 }

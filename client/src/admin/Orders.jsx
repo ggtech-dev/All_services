@@ -4,6 +4,7 @@ import { api } from '../api.js';
 import { Modal, useLoad, useToast } from './ui.jsx';
 import MapView, { secondsAgo } from '../components/MapView.jsx';
 import { AdminShopBill } from '../components/ShopBill.jsx';
+import OrderExtras from '../components/OrderExtras.jsx';
 import { doorPayment, feeLabel, feeStatusText } from '../components/DeliveryCharge.jsx';
 import { useSettings } from '../settings.js';
 import { qtyLabel } from '../qty.js';
@@ -207,7 +208,7 @@ function OrderDetail({ id, onClose, onChanged }) {
               {order.items.map((i) => (
                 <li key={i.id}>
                   <span>
-                    {i.icon || order.icon} {i.name} <small className="muted">{i.sell_by === 'pack' ? i.unit : qtyLabel(i.qty, i.sell_by)}</small>
+                    {i.icon || order.icon} {i.name} <small className="muted">{i.sell_by === 'pack' ? i.unit : (i.sell_by === 'custom' ? i.unit : qtyLabel(i.qty, i.sell_by))}</small>
                     {i.note && <small className="item-note">✂️ {i.note}</small>}
                   </span>
                   <span>{i.on_bill ? <small className="market-price">as per bill</small> : `${Number(i.qty)} × ${rupees(i.price)}`}</span>
@@ -233,6 +234,7 @@ function OrderDetail({ id, onClose, onChanged }) {
           </section>
         </div>
 
+        <OrderExtras order={order} filesBase={`/admin/orders/${order.id}/files`} who="admin" />
         <AdminShopBill order={order} />
 
         <section className="od-agent">

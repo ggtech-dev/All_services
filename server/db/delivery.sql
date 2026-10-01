@@ -16,17 +16,19 @@ $$;
 
 -- Delivery charge for these products (highest among their services) or for this service booking,
 -- after the "first N orders free" offer.
-CREATE OR REPLACE FUNCTION fn_delivery_quote(p_customer_id INT, p_product_ids INT[], p_service_id INT) RETURNS JSONB
+-- p_list_service_ids: services the customer wrote their own list for (kirana…), priced by the shop bill.
+DROP FUNCTION IF EXISTS fn_delivery_quote(INT, INT[], INT);
+CREATE OR REPLACE FUNCTION fn_delivery_quote(p_customer_id INT, p_product_ids INT[], p_service_id INT,
+                                             p_list_service_ids INT[] DEFAULT NULL) RETURNS JSONB
 LANGUAGE sql STABLE SET search_path FROM CURRENT AS $$
-  WITH base AS (
-    SELECT coalesce(
-             CASE WHEN p_service_id IS NOT NULL
-                  THEN (SELECT delivery_fee FROM services WHERE id = p_service_id)
-                  ELSE (SELECT max(s.delivery_fee) FROM products p JOIN services s ON s.id = p.service_id
-                         WHERE p.id = ANY(coalesce(p_product_ids, ARRAY[]::INT[])))
-             END, 0) AS fee
+  WITH svc AS (
+    SELECT ARRAY(SELECT service_id FROM products WHERE id = ANY(coalesce(p_product_ids, ARRAY[]::INT[]))
+                 UNION SELECT id FROM services WHERE id = ANY(coalesce(p_list_service_ids, ARRAY[]::INT[])) AND allows_list
+                 UNION SELECT p_service_id WHERE p_service_id IS NOT NULL) AS ids
+  ), base AS (
+    SELECT coalesce((SELECT max(s.delivery_fee) FROM services s, svc WHERE s.id = ANY(svc.ids)), 0) AS fee
   ), w AS (
-    SELECT * FROM fn_cart_window(p_product_ids, p_service_id)  -- daily_fresh.sql
+    SELECT * FROM fn_window_of((SELECT ids FROM svc))  -- daily_fresh.sql
   )
   SELECT jsonb_build_object(
     'base_fee', base.fee,
@@ -35,7 +37,8 @@ LANGUAGE sql STABLE SET search_path FROM CURRENT AS $$
                    - (SELECT count(*) FROM orders WHERE customer_id = p_customer_id AND status <> 'cancelled'))::int,
     -- items priced by the shop bill (vegetables, meat…)
     'on_bill', EXISTS (SELECT 1 FROM products p JOIN services s ON s.id = p.service_id
-                        WHERE p.id = ANY(coalesce(p_product_ids, ARRAY[]::INT[])) AND s.price_on_bill),
+                        WHERE p.id = ANY(coalesce(p_product_ids, ARRAY[]::INT[])) AND s.price_on_bill)
+               OR coalesce(cardinality(p_list_service_ids), 0) > 0,
     -- delivery time window and the slots the customer can pick
     'window', CASE WHEN w.win_from IS NOT NULL AND NOT w.conflict
                    THEN jsonb_build_object('from', w.win_from, 'to', w.win_to,

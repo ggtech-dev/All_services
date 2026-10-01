@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
+import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { pool } from './db.js';
 import authRoutes from './routes/auth.js';
 import catalogRoutes from './routes/catalog.js';
@@ -37,6 +39,27 @@ app.use('/api/promotions', promotionRoutes);
 app.use('/api/agents', applyRouter);
 app.use('/api/agent', agentRoutes);
 app.use('/api', catalogRoutes);
+app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
+
+// The built website (client/dist, made by "npm run build" in client/) — so one server runs the whole app and it can
+// be installed on phones/laptops. Hashed files are cached for a year; index.html, the service worker and the
+// manifest are always re-checked so a new version reaches everyone on their next visit.
+const WEB_DIR = path.resolve(import.meta.dirname, '../../client/dist');
+if (existsSync(path.join(WEB_DIR, 'index.html'))) {
+  app.use(express.static(WEB_DIR, {
+    index: false,
+    setHeaders: (res, file) => {
+      if (/[\\/]assets[\\/]/.test(file)) res.set('Cache-Control', 'public, max-age=31536000, immutable');
+      else res.set('Cache-Control', 'no-cache');
+    },
+  }));
+  // any other page (/orders/12, /agent…) is the single-page app — but not file addresses (anything with a dot,
+  // e.g. /private_uploads/x.jpg or a missing script): those get a plain 404
+  app.get(/^\/(?!api\/|uploads\/|private_uploads)[^.]*$/, (req, res) => {
+    res.set('Cache-Control', 'no-cache');
+    res.sendFile(path.join(WEB_DIR, 'index.html'));
+  });
+}
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 
