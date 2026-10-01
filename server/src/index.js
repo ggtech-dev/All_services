@@ -11,6 +11,7 @@ import adminOpsRoutes from './routes/adminOps.js';
 import orderRoutes from './routes/orders.js';
 import promotionRoutes from './routes/promotions.js';
 import agentRoutes, { applyRouter } from './routes/agent.js';
+import { pushRouter } from './push.js';
 
 if (!process.env.JWT_SECRET) {
   console.error('JWT_SECRET is missing. Copy .env.example to .env and fill it in.');
@@ -38,6 +39,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/agents', applyRouter);
 app.use('/api/agent', agentRoutes);
+app.use('/api/push', pushRouter);
 app.use('/api', catalogRoutes);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 

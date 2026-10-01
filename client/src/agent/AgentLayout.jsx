@@ -5,6 +5,7 @@ import { ToastProvider } from '../admin/ui.jsx';
 import { StateBadge, usePoll } from '../orderStatus.jsx';
 import { useLiveLocation } from './useLiveLocation.js';
 import { useAuth } from '../auth.jsx';
+import { syncPush, useNewOrderWatch } from '../alerts.js';
 
 // Mobile-first shell for delivery agents: header with online state, bottom tab bar.
 export default function AgentLayout() {
@@ -19,6 +20,11 @@ export default function AgentLayout() {
   usePoll(reload, 20000);
   // GPS is shared only while the agent is online (on duty).
   const location = useLiveLocation(!!me?.agent.is_online);
+  // sound + vibration for new orders on every agent screen (phone notifications come from the push)
+  useNewOrderWatch(!!me?.agent.is_online);
+  useEffect(() => {
+    syncPush();
+  }, []);
 
   if (error) return <div className="center-screen"><div className="alert">{error}</div></div>;
   if (!me) return <div className="center-screen"><div className="spinner" /></div>;

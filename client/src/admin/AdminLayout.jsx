@@ -10,12 +10,14 @@ const NAV = [
   { to: '/admin/orders', label: 'Manage orders', icon: '📦', badge: 'waiting' },
   { to: '/admin/agents', label: 'Manage agents', icon: '🛵', badge: 'pending_applications' },
   { to: '/admin/reports', label: 'Reports', icon: '📈' },
+  { to: '/admin/ratings', label: 'Ratings', icon: '⭐', badge: 'low_ratings' },
   { to: '/admin/live', label: 'Live map', icon: '📍' },
   { to: '/admin/service-types', label: 'Agent types', icon: '🧩' },
   { to: '/admin/delivery-charges', label: 'Delivery charges', icon: '🚚' },
   { to: '/admin/areas', label: 'Service areas', icon: '🗺️' },
   { to: '/admin/shops', label: 'Shops', icon: '🏪' },
   { to: '/admin/services', label: 'Services', icon: '🧰' },
+  { to: '/admin/subscriptions', label: 'Subscriptions', icon: '💳', badge: 'pending_subscriptions' },
   { to: '/admin/promotions', label: 'Promotions', icon: '📢' },
   { to: '/admin/products', label: 'Products', icon: '🛍️' },
   { to: '/admin/categories', label: 'Categories', icon: '🗂️' },
@@ -28,7 +30,7 @@ export default function AdminLayout() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
-  // Sidebar badges: orders waiting for an agent, agent applications to review.
+  // Sidebar badges: orders waiting for an agent, agent applications and subscription requests to review.
   const [counts, setCounts] = useState({});
   const loadCounts = () => api('/admin/orders-stats').then(setCounts).catch(() => {});
   useEffect(() => {
@@ -70,7 +72,7 @@ export default function AdminLayout() {
             </div>
           </header>
           <div className="admin-content">
-            <Outlet />
+            <div key={pathname} className="route-in"><Outlet /></div>
           </div>
         </div>
       </div>

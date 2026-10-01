@@ -19,8 +19,15 @@ export function SkillPicker({ types, value, onChange }) {
     <div className="skill-picker">
       {types.map((t) => (
         <button type="button" key={t.code} className={value.includes(t.code) ? 'active' : ''} onClick={() => toggle(t.code)} aria-pressed={value.includes(t.code)}>
-          <span>{t.icon}</span> {t.name}
+          <span>{t.icon}</span> {t.name}{t.subscription && <span className="skill-sub" title="Subscription">💳</span>}
         </button>
+      ))}
+      {/* types of work with subscription-only services: tell the agent before they apply */}
+      {types.filter((t) => t.subscription && value.includes(t.code)).map((t) => (
+        <p key={t.code} className="skill-sub-note">
+          💳 <b>{t.name}</b> orders need a subscription: {t.subscription.map((x) => `${x.service} ₹${Number(x.fee).toLocaleString('en-IN')} / ${x.days} days`).join(', ')}.
+          The admin calls about the payment and switches it on.
+        </p>
       ))}
     </div>
   );

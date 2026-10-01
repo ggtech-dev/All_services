@@ -417,6 +417,10 @@ BEGIN
       (SELECT t.name FROM orders o JOIN service_types t ON t.code = o.skill_code WHERE o.id = p_order_id)
       USING ERRCODE = '55000';
   END IF;
+  -- subscription-only services (subscriptions.sql): only subscribed agents
+  IF NOT fn_agent_may_take(p_agent_id, p_order_id) THEN
+    RAISE EXCEPTION 'This order is for subscribed agents only. See Subscriptions in your profile.' USING ERRCODE = '55000';
+  END IF;
 
   PERFORM set_config('app.event_note', 'Accepted by agent', true);
   UPDATE orders SET agent_id = p_agent_id, status = 'assigned', assigned_at = now()
@@ -441,6 +445,10 @@ BEGIN
                   WHERE o.id = p_order_id AND o.skill_code = ANY (a.skills)) THEN
     RAISE EXCEPTION 'This agent does not do % work. Add it to their types of work first.',
       (SELECT t.name FROM orders o JOIN service_types t ON t.code = o.skill_code WHERE o.id = p_order_id)
+      USING ERRCODE = '22023';
+  END IF;
+  IF NOT fn_agent_may_take(p_agent_id, p_order_id) THEN
+    RAISE EXCEPTION 'This order is for a subscription service and this agent has no active subscription for it. Activate it in Subscriptions first.'
       USING ERRCODE = '22023';
   END IF;
   PERFORM set_config('app.event_note', 'Assigned by admin', true);

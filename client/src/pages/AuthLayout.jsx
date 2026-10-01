@@ -1,3 +1,5 @@
+import SupportLinks from '../components/SupportLinks.jsx';
+
 export default function AuthLayout({ title, subtitle, children }) {
   return (
     <div className="auth-page">
@@ -13,6 +15,7 @@ export default function AuthLayout({ title, subtitle, children }) {
             <span key={c} className="chip">{c}</span>
           ))}
         </div>
+        <SupportLinks className="on-hero" />
       </section>
       <section className="auth-panel">
         <div className="auth-card">
@@ -20,6 +23,7 @@ export default function AuthLayout({ title, subtitle, children }) {
           <p className="muted">{subtitle}</p>
           {children}
         </div>
+        <SupportLinks className="below-card" />
       </section>
     </div>
   );

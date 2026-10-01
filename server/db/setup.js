@@ -20,7 +20,9 @@ const defaultSettings = {
   banner_title: 'What do you need today?',
   banner_subtitle: 'Water cans, plumbers, kirana, medicines, bike repair and more — from trusted local partners near you.',
   announcement: '🎉 Free delivery on your first 3 orders across Siddipet!',
-  support_phone: '+91 98765 43210',
+  support_phone: '+91 86886 87412', // help links on the login page and home (call)
+  support_whatsapp: '+91 86886 87412',
+  support_email: 'gouravmacha@gmail.com',
   service_city: 'Siddipet, Telangana',
   delivery_fee: '30', // starting delivery charge for shop services; after that it is set per service (admin → Delivery charges)
   free_delivery_orders: '3',
@@ -29,7 +31,7 @@ const defaultSettings = {
   require_delivery_otp: '0', // 1 = agent must enter the customer's OTP to mark delivered
 };
 // Settings still holding an older default are moved to the new one; admin-edited values are kept.
-const oldDefaults = { service_city: 'Hyderabad', announcement: '🎉 Free delivery on your first 3 orders!' };
+const oldDefaults = { service_city: 'Hyderabad', announcement: '🎉 Free delivery on your first 3 orders!', support_phone: '+91 98765 43210' };
 
 const client = await pool.connect();
 try {
@@ -44,6 +46,8 @@ try {
   await client.query(await sql('./shop_bill.sql'));
   await client.query(await sql('./daily_fresh.sql')); // before delivery.sql (its quote uses the delivery windows)
   await client.query(await sql('./shopping_list.sql')); // customer's own list, list photo, shops
+  await client.query(await sql('./subscriptions.sql')); // subscription-only services (plumbers…) and who may take them
+  await client.query(await sql('./ratings.sql')); // ratings after delivery, phone notifications (web push)
   await client.query(await sql('./delivery.sql'));
 
   await client.query('BEGIN');

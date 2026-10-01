@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query, asActor } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { clearShopPaymentDetails, discardUploads, orderPhotoUpload, removeOrderFiles, sendOrderFile, uploadedName, withPhotoFlags } from '../orderFiles.js';
+import { notifyNewOrder } from '../push.js';
 
 // Customer orders: place, list, track, cancel.
 const router = Router();
@@ -17,6 +18,7 @@ export async function loadOrder(id, { customerId } = {}) {
             ag.full_name AS agent_name, ag.phone AS agent_phone, a.vehicle_type, a.vehicle_number,
             coalesce(sh.name, o.preferred_shop_name) AS preferred_shop, sh.phone AS preferred_shop_phone, shl.name AS preferred_shop_area,
             (fn_setting_num('require_delivery_otp', 0) = 1) AS otp_required,
+            (SELECT to_jsonb(r) - 'customer_id' FROM order_ratings r WHERE r.order_id = o.id) AS rating,
             s.name AS service_name, st.name AS skill_name, st.agent_title, st.icon AS skill_icon,
             (SELECT c.icon FROM order_items i
                LEFT JOIN products p ON p.id = i.product_id
@@ -100,6 +102,7 @@ router.post('/', orderPhotoUpload(['list_photo']), h(async (req, res) => {
       ])).rows[0]
     );
     res.status(201).json(withPhotoFlags(order));
+    notifyNewOrder(order.id); // phone alert to agents who can take it
   } catch (err) {
     await discardUploads(req);
     throw err;
@@ -110,6 +113,7 @@ router.get('/', h(async (req, res) => {
   const { rows } = await query(
     `SELECT o.id, o.kind, o.status, o.total, o.created_at, o.delivered_at, o.delivery_otp,
             ag.full_name AS agent_name, st.agent_title, (fn_setting_num('require_delivery_otp', 0) = 1) AS otp_required,
+            (SELECT r.stars FROM order_ratings r WHERE r.order_id = o.id) AS rated,
             (SELECT count(*) FROM order_items i WHERE i.order_id = o.id)::int AS item_count,
             (SELECT string_agg(fn_item_label(i.name, i.qty, i.sell_by, i.unit), ', ' ORDER BY i.id)
                FROM order_items i WHERE i.order_id = o.id) AS summary
@@ -126,6 +130,16 @@ router.get('/:id', h(async (req, res) => {
   const order = await loadOrder(Number(req.params.id), { customerId: req.user.id });
   if (!order) return res.status(404).json({ error: 'Order not found' });
   res.json(order);
+}));
+
+// Customer rates the agent after delivery. body: { stars: 1-5, comment?, tags?: [] }
+router.post('/:id/rating', h(async (req, res) => {
+  const b = req.body || {};
+  const tags = Array.isArray(b.tags) ? b.tags.filter((t) => typeof t === 'string').slice(0, 10) : [];
+  await query('CALL sp_rate_order($1,$2,$3,$4,$5)', [
+    req.user.id, Number(req.params.id), Number.isInteger(b.stars) ? b.stars : null, typeof b.comment === 'string' ? b.comment : null, tags,
+  ]);
+  res.json((await loadOrder(Number(req.params.id), { customerId: req.user.id })).rating);
 }));
 
 // Live position of the agent on the customer's own order — only while it is assigned / on the way.

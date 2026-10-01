@@ -7,6 +7,8 @@ import { AgentShopBill } from '../components/ShopBill.jsx';
 import OrderExtras from '../components/OrderExtras.jsx';
 import { AgentDoorPayment, feeLabel } from '../components/DeliveryCharge.jsx';
 import { InstallBanner } from '../components/InstallApp.jsx';
+import { SubscriptionReminder } from './AgentPages.jsx';
+import AlertsCard from '../components/AlertsCard.jsx';
 import { cityOf, useSettings } from '../settings.js';
 import { qtyLabel } from '../qty.js';
 
@@ -91,6 +93,8 @@ export default function AgentHome() {
   return (
     <div className="agent-stack">
       <InstallBanner who="agent" />
+      <SubscriptionReminder />
+      <AlertsCard compact />
       <section className={`online-card ${online ? 'is-online' : ''}`}>
         <div>
           <b>{online ? "You're online" : "You're offline"}</b>

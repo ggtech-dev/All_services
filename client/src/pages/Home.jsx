@@ -5,6 +5,7 @@ import SmartImage from '../components/SmartImage.jsx';
 import Promotions from '../components/Promotions.jsx';
 import { InstallBanner } from '../components/InstallApp.jsx';
 import { windowLabel } from '../qty.js';
+import Skeleton from '../components/Skeleton.jsx';
 
 export default function Home() {
   const [categories, setCategories] = useState([]);
@@ -45,7 +46,7 @@ export default function Home() {
 
       {error && <div className="alert">{error}</div>}
       {loading ? (
-        <div className="center-block"><div className="spinner" /></div>
+        <Skeleton variant="grid" />
       ) : (
         <div className="category-grid">
           {categories.map((c) => (

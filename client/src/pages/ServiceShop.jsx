@@ -6,6 +6,7 @@ import { useCart } from '../cart.jsx';
 import { qtyLabel, windowLabel } from '../qty.js';
 import PhotoPicker from '../components/PhotoPicker.jsx';
 import ScrollRow from '../components/ScrollRow.jsx';
+import Skeleton from '../components/Skeleton.jsx';
 
 const rupees = (v) => `₹${Number(v).toLocaleString('en-IN')}`;
 
@@ -44,7 +45,7 @@ export default function ServiceShop() {
   }, [products, section]);
 
   if (error) return <div className="alert">{error} — <Link to="/">back home</Link></div>;
-  if (!data) return <div className="center-block"><div className="spinner" /></div>;
+  if (!data) return <Skeleton variant="shop" />;
 
   const { service } = data;
   const onBill = service.price_on_bill;

@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../api.js';
 import { Modal, timeAgo, useLoad, useToast } from './ui.jsx';
 import { StateBadge, StatusBadge, VEHICLES, rupees, usePoll, when } from '../orderStatus.jsx';
 import { AGENT_DOCS, AgentForm, SkillPicker } from '../pages/AgentApply.jsx';
 import MapView, { secondsAgo } from '../components/MapView.jsx';
+import { Stars } from '../components/RateOrder.jsx';
 
 const TABS = [
   ['', 'All agents'],
@@ -88,7 +89,7 @@ export default function Agents() {
           <div className="table-scroll">
             <table className="table">
               <thead>
-                <tr><th>Agent</th><th>Types of work</th><th>Status</th><th>Area</th><th>Today</th><th>Total</th><th>Wallet</th><th>Cash in hand</th><th aria-label="Open" /></tr>
+                <tr><th>Agent</th><th>Types of work</th><th>Status</th><th>Area</th><th>Today</th><th>Total</th><th>Rating</th><th>Wallet</th><th>Cash in hand</th><th aria-label="Open" /></tr>
               </thead>
               <tbody>
                 {rows.map((a) => (
@@ -107,6 +108,9 @@ export default function Agents() {
                     <td>{a.locality_name || <span className="muted">—</span>}</td>
                     <td className="nowrap"><b>{a.today_deliveries}</b> <span className="muted small">deliveries</span></td>
                     <td>{a.total_deliveries}</td>
+                    <td className={`nowrap ${a.rating?.count >= 3 && Number(a.rating.avg) < 3.5 ? 'rating-bad' : ''}`}>
+                      {a.rating?.count ? <>★ {a.rating.avg} <span className="muted small">({a.rating.count})</span></> : <span className="muted">—</span>}
+                    </td>
                     <td className="nowrap">{rupees(a.wallet_balance)}</td>
                     <td className={`nowrap ${Number(a.cash_in_hand) > 0 ? 'cash-due' : ''}`}>{rupees(a.cash_in_hand)}</td>
                     <td><button className="btn btn-ghost btn-sm">View</button></td>
@@ -205,10 +209,14 @@ function AgentDetail({ id, types, onClose, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [wallet, setWallet] = useState({ type: 'payout', amount: '', note: '' });
 
+  const saved = useRef(null); // the agent's types of work as last loaded from the server
   const load = useCallback(
     () => api(`/admin/agents/${id}`).then((d) => {
       setData(d);
-      setSkills(d.agent.skills);
+      // a reload must not wipe types the admin is still choosing (unsaved edits)
+      const same = (x, y) => x && y && x.slice().sort().join() === y.slice().sort().join();
+      setSkills((cur) => (cur === null || same(cur, saved.current) ? d.agent.skills : cur));
+      saved.current = d.agent.skills;
     }).catch((e) => toast(e.message, 'error')),
     [id, toast]
   );
@@ -327,7 +335,23 @@ function AgentDetail({ id, types, onClose, onChanged }) {
               <div><small>Wallet</small><b>{rupees(s.wallet_balance)}</b><small>to pay agent</small></div>
               <div className={Number(s.cash_in_hand) > 0 ? 'warn' : ''}><small>Cash in hand</small><b>{rupees(s.cash_in_hand)}</b><small>to collect</small></div>
               <div><small>Lifetime</small><b>{rupees(s.lifetime_earnings)}</b><small>earned</small></div>
+              <div className={s.rating?.count >= 3 && Number(s.rating.avg) < 3.5 ? 'warn' : ''}><small>Rating</small><b>{s.rating?.count ? `★ ${s.rating.avg}` : '—'}</b><small>{s.rating?.count || 0} ratings{s.rating?.low ? ` · ${s.rating.low} low` : ''}</small></div>
             </div>
+
+            {data.ratings?.length > 0 && (
+              <section>
+                <h4>Customer ratings</h4>
+                <ul className="agent-ratings">
+                  {data.ratings.slice(0, 8).map((r) => (
+                    <li key={r.order_id} className={r.stars <= 2 ? 'row-bad' : ''}>
+                      <Stars value={r.stars} size="sm" />
+                      <span className="small">{[...(r.tags || []), r.comment].filter(Boolean).join(' · ') || <span className="muted">No comment</span>}</span>
+                      <small className="muted">#{r.order_id} · {r.customer_name} · {timeAgo(r.created_at)}</small>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             <div className="od-grid">
               <section>

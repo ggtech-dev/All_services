@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { LIVE_SQL, TRAIL_SQL, loadOrder } from './orders.js';
 import { DOC_DIR, DOC_FIELDS, createAgent, docUpload, parseSkills } from './agent.js';
 import { clearShopPaymentDetails, sendOrderFile } from '../orderFiles.js';
+import { notifyAssigned, notifyCustomer } from '../push.js';
 
 // Admin: manage orders and delivery agents.
 const router = Router();
@@ -21,7 +22,10 @@ const num = (v) => {
 
 // ---------- orders ----------
 router.get('/orders-stats', h(async (req, res) => {
-  const { rows } = await query('SELECT fn_order_stats() AS s');
+  const { rows } = await query(
+    `SELECT fn_order_stats() || fn_subscription_counts() || jsonb_build_object('low_ratings',
+            (SELECT count(*) FROM order_ratings WHERE stars <= 2 AND created_at >= now() - interval '7 days')) AS s`
+  );
   res.json(rows[0].s);
 }));
 
@@ -62,15 +66,17 @@ router.get('/orders/:id', h(async (req, res) => {
   const { rows: agents } = await query(
     `SELECT v.user_id, v.full_name, v.phone, v.state, v.vehicle_type, v.locality_name,
             CASE WHEN v.lat IS NOT NULL THEN fn_distance_km(v.lat, v.lng, $1, $2) END AS distance_km
-       FROM v_agents v WHERE v.status = 'active' AND $3 = ANY (v.skills)
+       FROM v_agents v WHERE v.status = 'active' AND $3 = ANY (v.skills) AND fn_agent_may_take(v.user_id, $4)
       ORDER BY (v.state = 'free') DESC, distance_km NULLS LAST`,
-    [order.locality_lat, order.locality_lng, order.skill_code]
+    [order.locality_lat, order.locality_lng, order.skill_code, order.id]
   );
   res.json({ ...order, candidates: agents });
 }));
 
 router.post('/orders/:id/assign', h(async (req, res) => {
   await asActor(req.user.id, (db) => db.query('SELECT fn_admin_assign_order($1,$2)', [Number(req.params.id), num(req.body?.agent_id)]));
+  notifyAssigned(Number(req.params.id), num(req.body?.agent_id));
+  notifyCustomer(Number(req.params.id), 'assigned');
   res.status(204).end();
 }));
 
@@ -79,6 +85,7 @@ router.post('/orders/:id/cancel', h(async (req, res) => {
     db.query('CALL sp_cancel_order($1,$2,true,$3)', [Number(req.params.id), req.user.id, req.body?.reason || null])
   );
   await clearShopPaymentDetails(Number(req.params.id));
+  notifyCustomer(Number(req.params.id), 'cancelled');
   res.status(204).end();
 }));
 
@@ -153,7 +160,8 @@ router.get('/agents', h(async (req, res) => {
             v.vehicle_number, v.locality_name, v.active_orders, v.today_deliveries, v.last_seen_at, v.created_at, v.skills,
             v.rejection_reason, (fn_agent_stats(v.user_id)->>'wallet_balance')::numeric AS wallet_balance,
             (fn_agent_stats(v.user_id)->>'cash_in_hand')::numeric AS cash_in_hand,
-            (fn_agent_stats(v.user_id)->>'total_deliveries')::int AS total_deliveries
+            (fn_agent_stats(v.user_id)->>'total_deliveries')::int AS total_deliveries,
+            fn_agent_rating(v.user_id) AS rating
        FROM v_agents v
       WHERE ($1::text IS NULL OR v.state = $1)
         AND ($2::text IS NULL OR $2 = ANY (v.skills))
@@ -167,8 +175,8 @@ router.get('/agents/:id', h(async (req, res) => {
   const id = Number(req.params.id);
   const { rows } = await query('SELECT * FROM v_agents WHERE user_id = $1', [id]);
   if (!rows[0]) return res.status(404).json({ error: 'Agent not found' });
-  const [{ rows: stats }, { rows: orders }, { rows: wallet }] = await Promise.all([
-    query('SELECT fn_agent_stats($1) AS s', [id]),
+  const [{ rows: stats }, { rows: orders }, { rows: wallet }, { rows: ratings }] = await Promise.all([
+    query("SELECT fn_agent_stats($1) || jsonb_build_object('rating', fn_agent_rating($1)) AS s", [id]),
     query(
       `SELECT o.id, o.status, o.total, o.agent_earning, o.created_at, o.delivered_at, o.contact_name, l.name AS locality_name,
               round(extract(epoch FROM o.delivered_at - o.assigned_at) / 60) AS minutes
@@ -181,12 +189,17 @@ router.get('/agents/:id', h(async (req, res) => {
         WHERE w.agent_id = $1 ORDER BY w.created_at DESC LIMIT 100`,
       [id]
     ),
+    query(
+      `SELECT r.order_id, r.stars, r.comment, r.tags, r.created_at, u.full_name AS customer_name
+         FROM order_ratings r JOIN users u ON u.id = r.customer_id WHERE r.agent_id = $1 ORDER BY r.created_at DESC LIMIT 50`,
+      [id]
+    ),
   ]);
   const agent = rows[0];
   // Which documents exist (the files themselves are fetched separately).
   const docs = Object.fromEntries(DOC_FIELDS.map((f) => [f, Boolean(agent[f])]));
   DOC_FIELDS.forEach((f) => delete agent[f]);
-  res.json({ agent, docs, stats: stats[0].s, orders, wallet });
+  res.json({ agent, docs, stats: stats[0].s, orders, wallet, ratings });
 }));
 
 // Streams an identity document to an admin. Never exposed publicly.
@@ -276,6 +289,89 @@ router.get('/reports/orders.csv', h(async (req, res) => {
   res.set('Content-Type', 'text/csv; charset=utf-8');
   res.set('Content-Disposition', `attachment; filename="orders_${from}_to_${to}.csv"`);
   res.send('﻿' + csv); // BOM so Excel shows ₹ and Telugu names correctly
+}));
+
+// ---------- ratings (customers rate agents after delivery) ----------
+// ?stars=low (1–2 ⭐) | 1..5   ?agent=
+router.get('/ratings', h(async (req, res) => {
+  const stars = req.query.stars === 'low' ? [1, 2] : /^[1-5]$/.test(req.query.stars || '') ? [Number(req.query.stars)] : null;
+  const [{ rows: list }, { rows: watch }, { rows: sum }] = await Promise.all([
+    query(
+      `SELECT r.order_id, r.stars, r.comment, r.tags, r.created_at, r.agent_id, ag.full_name AS agent_name, ag.phone AS agent_phone,
+              cu.full_name AS customer_name, cu.phone AS customer_phone
+         FROM order_ratings r JOIN users cu ON cu.id = r.customer_id LEFT JOIN users ag ON ag.id = r.agent_id
+        WHERE ($1::int[] IS NULL OR r.stars = ANY ($1)) AND ($2::int IS NULL OR r.agent_id = $2)
+        ORDER BY r.created_at DESC LIMIT 200`,
+      [stars, num(req.query.agent)]
+    ),
+    query('SELECT fn_rating_watchlist() AS w'),
+    query(
+      `SELECT round(avg(stars), 1) AS avg, count(*)::int AS count,
+              count(*) FILTER (WHERE stars <= 2 AND created_at >= now() - interval '7 days')::int AS low_7d,
+              count(*) FILTER (WHERE created_at >= now() - interval '7 days')::int AS count_7d,
+              (SELECT count(*)::int FROM orders o WHERE o.status = 'delivered' AND o.agent_id IS NOT NULL) AS delivered
+         FROM order_ratings`
+    ),
+  ]);
+  res.json({ ratings: list, watchlist: watch[0].w, summary: sum[0] });
+}));
+
+// ---------- subscriptions (subscription-only services: requests, members, payments) ----------
+router.get('/subscriptions', h(async (req, res) => {
+  const [{ rows: services }, { rows: subs }, { rows: agents }, { rows: counts }] = await Promise.all([
+    query(
+      `SELECT s.id, s.name, c.name AS category_name, c.icon, s.skill_code, t.name AS skill_name, s.is_active,
+              s.subscription_required, s.subscription_fee, s.subscription_days,
+              (SELECT count(*) FROM agent_subscriptions x WHERE x.service_id = s.id AND x.status = 'active' AND x.paid_until >= now())::int AS members
+         FROM services s JOIN categories c ON c.id = s.category_id JOIN service_types t ON t.code = s.skill_code
+        ORDER BY s.subscription_required DESC, c.sort_order, s.sort_order, s.name`
+    ),
+    query('SELECT fn_admin_subscriptions() AS list'),
+    query(`SELECT user_id, full_name, phone, username FROM v_agents WHERE status IN ('active', 'pending') ORDER BY full_name`),
+    query('SELECT fn_subscription_counts() AS c'),
+  ]);
+  res.json({ services, subscriptions: subs[0].list, agents, counts: counts[0].c });
+}));
+
+// turn "subscription only" on/off for a service, set its fee and period
+router.put('/subscriptions/services/:id', h(async (req, res) => {
+  const b = req.body || {};
+  await asActor(req.user.id, (db) =>
+    db.query('CALL sp_set_service_subscription($1,$2,$3,$4)', [Number(req.params.id), b.required === true, num(b.fee), num(b.days)])
+  );
+  res.status(204).end();
+}));
+
+// add an agent directly (after a phone call) — paid or free
+router.post('/subscriptions', h(async (req, res) => {
+  const b = req.body || {};
+  const { rows } = await asActor(req.user.id, (db) =>
+    db.query('SELECT * FROM fn_admin_add_subscription($1,$2,$3,$4,$5,$6,$7)', [
+      num(b.agent_id), num(b.service_id), num(b.amount), b.mode, b.reference, num(b.days), req.user.id,
+    ])
+  );
+  res.status(201).json(rows[0]);
+}));
+
+// payment received → activate / renew (extends from the current end date)
+router.post('/subscriptions/:id/activate', h(async (req, res) => {
+  const b = req.body || {};
+  const { rows } = await asActor(req.user.id, (db) =>
+    db.query('SELECT * FROM fn_admin_activate_subscription($1,$2,$3,$4,$5,$6)', [
+      Number(req.params.id), num(b.amount), b.mode, b.reference, num(b.days), req.user.id,
+    ])
+  );
+  res.json(rows[0]);
+}));
+
+router.post('/subscriptions/:id/reject', h(async (req, res) => {
+  await asActor(req.user.id, (db) => db.query('CALL sp_admin_reject_subscription($1,$2,$3)', [Number(req.params.id), req.body?.reason, req.user.id]));
+  res.status(204).end();
+}));
+
+router.post('/subscriptions/:id/stop', h(async (req, res) => {
+  await asActor(req.user.id, (db) => db.query('CALL sp_admin_stop_subscription($1,$2,$3)', [Number(req.params.id), req.body?.reason, req.user.id]));
+  res.status(204).end();
 }));
 
 // ---------- delivery charges (per service) ----------

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { ACTIVE, StatusBadge, rupees, usePoll, when } from '../orderStatus.jsx';
+import Skeleton, { EmptyState } from '../components/Skeleton.jsx';
 
 export default function MyOrders() {
   const [orders, setOrders] = useState(null);
@@ -14,16 +15,9 @@ export default function MyOrders() {
   usePoll(load, 10000, !!orders?.some((o) => ACTIVE.includes(o.status)));
 
   if (error) return <div className="alert">{error}</div>;
-  if (!orders) return <div className="center-block"><div className="spinner" /></div>;
+  if (!orders) return <Skeleton variant="list" />;
   if (!orders.length) {
-    return (
-      <div className="empty-state">
-        <div className="empty-icon">📦</div>
-        <h2>No orders yet</h2>
-        <p className="muted">Your orders and bookings will show up here.</p>
-        <Link to="/" className="btn btn-primary">Browse services</Link>
-      </div>
-    );
+    return <EmptyState icon="📦" title="No orders yet" text="Your orders and bookings will show up here." action="Browse services" to="/" />;
   }
 
   return (
@@ -46,7 +40,10 @@ export default function MyOrders() {
             <div className="order-row-side">
               <b>{rupees(o.total)}</b>
               {o.otp_required && ACTIVE.includes(o.status) && o.status !== 'placed' && <span className="otp-chip">OTP {o.delivery_otp}</span>}
-              <span className="link">Track →</span>
+              {o.status === 'delivered' && o.agent_name && (o.rated
+                ? <span className="rated-chip" title="Your rating">★ {o.rated}</span>
+                : <span className="rate-chip">⭐ Rate</span>)}
+              <span className="link">{o.status === 'delivered' ? 'View →' : 'Track →'}</span>
             </div>
           </Link>
         ))}

@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 import { query, asActor } from '../db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { loadOrder } from './orders.js';
+import { notifyCustomer, notifyNewOrder } from '../push.js';
 import { clearShopPaymentDetails, discardUploads, orderPhotoUpload, removeOrderFiles, sendOrderFile, uploadedName } from '../orderFiles.js';
 
 const h = (fn) => (req, res, next) => fn(req, res, next).catch(next);
@@ -73,6 +74,8 @@ export async function createAgent(req, status) {
 export const applyRouter = Router();
 applyRouter.post('/apply', docUpload, h(async (req, res) => {
   const agent = await createAgent(req, 'pending');
+  // picked a type of work with subscription services → requests go to the admin
+  await query('CALL sp_subscription_requests_from_skills($1)', [agent.user_id]);
   res.status(201).json({ ok: true, status: agent.status });
 }));
 
@@ -94,7 +97,7 @@ router.get('/me', h(async (req, res) => {
          FROM v_agents v WHERE v.user_id = $1`,
       [req.user.id]
     ),
-    query("SELECT fn_agent_stats($1) || jsonb_build_object('pay_per_order', fn_setting_num('agent_pay_per_order', 25)) AS s", [req.user.id]),
+    query("SELECT fn_agent_stats($1) || jsonb_build_object('pay_per_order', fn_setting_num('agent_pay_per_order', 25), 'rating', fn_agent_rating($1)) AS s", [req.user.id]),
   ]);
   res.json({ agent: agent[0], stats: stats[0].s });
 }));
@@ -138,6 +141,7 @@ router.get('/available', h(async (req, res) => {
                     FROM agents a LEFT JOIN localities l2 ON l2.id = a.locality_id WHERE a.user_id = $1) me ON true
       WHERE o.status = 'placed' AND o.agent_id IS NULL
         AND o.skill_code = ANY ((SELECT skills FROM agents WHERE user_id = $1)::text[])
+        AND fn_agent_may_take($1, o.id) -- subscription-only services: subscribed agents only
       ORDER BY distance_km NULLS LAST, o.created_at
       LIMIT 50`,
     [req.user.id]
@@ -147,6 +151,7 @@ router.get('/available', h(async (req, res) => {
 
 router.post('/orders/:id/accept', h(async (req, res) => {
   await asActor(req.user.id, (db) => db.query('SELECT fn_agent_accept_order($1,$2)', [req.user.id, Number(req.params.id)]));
+  notifyCustomer(Number(req.params.id), 'assigned');
   res.json(await loadOrder(Number(req.params.id)));
 }));
 
@@ -180,6 +185,7 @@ router.post('/orders/:id/status', h(async (req, res) => {
     db.query('SELECT fn_agent_update_order($1,$2,$3,$4)', [req.user.id, Number(req.params.id), req.body?.status, req.body?.otp ?? null])
   );
   if (req.body?.status === 'delivered') await clearShopPaymentDetails(Number(req.params.id));
+  notifyCustomer(Number(req.params.id), req.body?.status);
   res.status(204).end();
 }));
 
@@ -222,6 +228,21 @@ router.post('/orders/:id/release', h(async (req, res) => {
   await asActor(req.user.id, (db) =>
     db.query('CALL sp_agent_release_order($1,$2,$3)', [req.user.id, Number(req.params.id), req.body?.reason || null])
   );
+  notifyNewOrder(Number(req.params.id)); // back in the queue → alert the other agents
+  res.status(204).end();
+}));
+
+// ---------- subscriptions: earn from subscription-only services (plumber…) ----------
+router.get('/subscriptions', h(async (req, res) => {
+  const { rows } = await query('SELECT fn_agent_subscriptions($1) AS list', [req.user.id]);
+  res.json(rows[0].list);
+}));
+
+// request a subscription (or a renewal); payment_ref = UPI reference if already paid to the company UPI
+router.post('/subscriptions', h(async (req, res) => {
+  const b = req.body || {};
+  const text = (v) => (typeof v === 'string' ? v : null);
+  await query('CALL sp_agent_request_subscription($1,$2,$3,$4)', [req.user.id, Number(b.service_id) || null, text(b.payment_ref), text(b.note)]);
   res.status(204).end();
 }));
 

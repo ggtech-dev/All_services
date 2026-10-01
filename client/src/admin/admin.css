@@ -461,3 +461,15 @@ a.stat-tile:hover { transform: translateY(-2px); }
 /* daily service options in the service form */
 .daily-options { border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
 .daily-options legend { font-weight: 700; padding: 0 6px; }
+
+/* ratings */
+.row-bad td { background: #fff7f7; }
+.rating-bad { color: #dc2626; font-weight: 600; }
+.rate-chip.bad { color: #b91c1c; background: #fee2e2; }
+.watch-panel { border: 1px solid #fecaca; background: #fffafa; }
+.watch-panel h3 { margin: 0 0 4px; }
+.watch-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.watch-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 12px; background: #fff; border: 1px solid #fee2e2; border-radius: 10px; }
+.agent-ratings { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.agent-ratings li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 8px; background: #f8fafc; }
+.agent-ratings li.row-bad { background: #fff1f2; }

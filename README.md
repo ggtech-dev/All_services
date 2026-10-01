@@ -129,6 +129,33 @@ Every **service** has one type of work (`services.skill_code`) and every **agent
 - Change a service's type in **Services** (dropdown in the row); change an agent's types in **Manage agents** → agent → *Types of work*. New applicants choose their types on the apply page.
 - Customers see the right word: “Your plumber”, “Your electrician”, “Your delivery partner”.
 
+## Order alerts (sound + phone notifications, free)
+
+- **Agents**: a “Turn on order alerts” card on the agent home (and in Profile, with a **Test** button). Once allowed, every new order they can take rings (a chime made in the browser, plus vibration) and shows a phone notification — **even when the app is in the background or closed**. Only *online* agents of the right type (and subscription) are alerted. Orders assigned by the admin and orders released back to the queue alert too.
+- **Customers**: optional “Get order updates on your phone” (accepted, on the way, delivered → “tap to rate”, cancelled). In My account and on the order page.
+- How: standard **Web Push** (`web-push` npm package, no Firebase account, no cost). The key pair is created on first start and kept in the `app_secrets` table (never sent to browsers). Devices are in `push_subscriptions`; dead ones are removed automatically. Code: `server/src/push.js`, `client/src/alerts.js`, `client/public/push-sw.js`.
+- Works in the **installed app or the https link** (Cloudflare tunnel / real domain) and on `http://localhost:5000`. Not on the `:5173` dev server (no service worker there — sound still works). iPhone: iOS 16.4+ and the app must be added to the Home Screen first. Private/incognito windows can't get push.
+
+## Ratings (quality control)
+
+- After delivery the customer rates the agent **1–5 ⭐** with quick tags (On time, Polite… / Late, Rude, Wrong items…) and a comment. They can change it for 7 days. My orders shows **⭐ Rate** on delivered orders.
+- Admin → **⭐ Ratings**: average, count, 1–2 ⭐ this week, **Agents to watch** (average below 3.5 with 3+ ratings, or any 1–2 ⭐ in 7 days) with a call link, and all ratings filterable by stars. The sidebar badge counts 1–2 ⭐ ratings from the last 7 days.
+- Manage agents shows each agent's rating (red when low) and their recent ratings; agents see their own average in Profile. Logic in `server/db/ratings.sql`.
+
+## Help links (Call / WhatsApp / Mail)
+
+Shown on the login page (beside the picture on laptops, under the form on phones), in My account and the agent Profile. Change the numbers and email in Admin → **Site settings** (`support_phone`, `support_whatsapp`, `support_email`); leave one empty to hide it.
+
+## Subscription services (e.g. plumbers pay to get orders)
+
+Logic in `server/db/subscriptions.sql`. Admin → **💳 Subscriptions**:
+
+- **Subscription services** tab: search a service (e.g. “plumber”), set the fee and days, and switch it on. Its orders then go **only to agents with an active subscription** for it. Switch it off and every agent of that type gets the orders again (subscriptions are kept).
+- **Requests**: an agent asks from the agent app (Profile → Subscriptions), optionally after paying the company UPI with the reference. A new applicant who picks that type of work is sent here too. Call or WhatsApp them, then **Activate** (amount, UPI/cash/free, reference, days) or **Reject**.
+- **Members / Ending soon / Expired**: paid-until date and days left; **Renew / extend** (adds the days after the current end date), **Stop** (they lose the orders right away). Every payment is kept in `subscription_payments`.
+- Activating also gives the agent that type of work. When `paid_until` passes, the orders stop by themselves. The agent app shows a reminder in the last 5 days and lets them renew in the last 7.
+- Checked everywhere an order can go to an agent: the agent's available list and Accept, and the admin's agent list and Assign (`fn_agent_may_take`).
+
 ## Buying at a shop (shop bill + UPI to the shop)
 
 For item orders the agent can buy from a local shop and let the customer pay the shop directly:

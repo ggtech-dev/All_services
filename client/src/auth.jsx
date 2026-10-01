@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { AUTH_PROBLEM, api, getToken, setToken } from './api.js';
+import { dropPush, syncPush } from './alerts.js';
 
 const AuthContext = createContext(null);
 
@@ -34,6 +35,7 @@ export function AuthProvider({ children }) {
   const handleAuth = (d) => {
     setToken(d.token);
     setUser(d.user);
+    syncPush(); // device already allowed notifications → link it to this account
   };
 
   const value = {
@@ -58,7 +60,8 @@ export function AuthProvider({ children }) {
       }),
     // After profile changes (e.g. email verified), refresh the stored user.
     setUser,
-    logout: () => {
+    logout: async () => {
+      await dropPush(); // this device stops getting this account's notifications
       setToken(null);
       setUser(null);
     },

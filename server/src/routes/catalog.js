@@ -15,7 +15,8 @@ router.get('/localities', async (req, res, next) => {
 router.get('/service-types', async (req, res, next) => {
   try {
     const { rows } = await query(
-      'SELECT code, name, agent_title, icon FROM service_types WHERE is_active ORDER BY sort_order, name'
+      `SELECT code, name, agent_title, icon, fn_subscription_by_skill() -> code AS subscription
+         FROM service_types WHERE is_active ORDER BY sort_order, name`
     );
     res.json(rows);
   } catch (err) {

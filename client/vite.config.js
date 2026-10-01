@@ -41,6 +41,7 @@ export default defineConfig({
         // the app is a single page: any page opens index.html — but never for API calls or uploaded files
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/uploads\//],
+        importScripts: ['/push-sw.js'], // phone notifications (new orders, order updates)
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,

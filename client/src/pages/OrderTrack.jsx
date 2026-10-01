@@ -8,6 +8,9 @@ import OrderExtras from '../components/OrderExtras.jsx';
 import { CustomerDoorPayment, doorPayment, feeLabel } from '../components/DeliveryCharge.jsx';
 import { cityOf, useSettings } from '../settings.js';
 import { qtyLabel } from '../qty.js';
+import RateOrder from '../components/RateOrder.jsx';
+import AlertsCard from '../components/AlertsCard.jsx';
+import Skeleton from '../components/Skeleton.jsx';
 
 // Live map of the assigned agent coming to the customer. Refreshes every 8 seconds.
 function LiveTrack({ orderId, who, icon }) {
@@ -56,7 +59,7 @@ export default function OrderTrack() {
   usePoll(load, 8000, !!order && ACTIVE.includes(order.status));
 
   if (error) return <div className="alert">{error} — <Link to="/orders">My orders</Link></div>;
-  if (!order) return <div className="center-block"><div className="spinner" /></div>;
+  if (!order) return <Skeleton variant="page" />;
 
   const isService = order.kind === 'service';
   const pay = doorPayment(order, settings);
@@ -105,6 +108,9 @@ export default function OrderTrack() {
           </div>
         )}
       </section>
+
+      <RateOrder order={order} who={who} onSaved={load} />
+      {ACTIVE.includes(order.status) && <AlertsCard who="customer" compact />}
 
       {order.status !== 'cancelled' && (
         <ol className="stepper-track">

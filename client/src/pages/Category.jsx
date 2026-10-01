@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api, formatEta, formatPrice } from '../api.js';
 import SmartImage from '../components/SmartImage.jsx';
 import { windowLabel } from '../qty.js';
+import Skeleton from '../components/Skeleton.jsx';
 
 export default function Category() {
   const { slug } = useParams();
@@ -22,7 +23,7 @@ export default function Category() {
   );
 
   if (error) return <div className="alert">{error} — <Link to="/">back home</Link></div>;
-  if (!data) return <div className="center-block"><div className="spinner" /></div>;
+  if (!data) return <Skeleton variant="grid" />;
 
   const { category } = data;
   return (
